@@ -1,0 +1,31 @@
+# Core Django
+Django==5.0.1
+python-decouple==3.8
+
+# Database
+psycopg2-binary==2.9.9  # Optional: for PostgreSQL
+
+# Document Processing
+PyMuPDF==1.23.8  # PDF parsing
+python-docx==1.1.0  # DOCX parsing
+openpyxl==3.1.2  # Excel parsing
+
+# AI/ML - CPU-only versions
+sentence-transformers==2.2.2
+torch==2.1.2+cpu -f https://download.pytorch.org/whl/torch_stable.html
+faiss-cpu==1.7.4
+numpy==1.24.3
+
+# Ollama client
+ollama==0.1.6
+
+# Task Scheduling
+django-apscheduler==0.6.2
+
+# Utilities
+python-magic==0.4.27  # File type detection
+Pillow==10.1.0  # Image handling
+requests==2.31.0
+
+# Development
+django-debug-toolbar==4.2.0
