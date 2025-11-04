@@ -1,0 +1,29 @@
+
+# Core Django
+Django
+python-decouple
+
+# Document Processing
+PyMuPDF
+python-docx
+openpyxl
+
+# AI/ML - CPU-only versions
+sentence-transformers
+torch
+faiss-cpu
+numpy
+
+# Ollama client
+ollama
+
+# Task Scheduling
+django-apscheduler
+
+# Utilities
+python-magic
+Pillow
+requests
+
+# Development
+django-debug-toolbar
