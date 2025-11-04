@@ -106,11 +106,11 @@ python manage.py createsuperuser
 # If you want to try it with demo users use this command:
 python manage.py setup_system --create-demo-users
 
-And use the demo users created by setup:
+# And use the demo users created by setup:
 
-Admin: admin / admin123
-Manager: manager / manager123
-Employee: employee / employee123
+# Admin: admin / admin123
+# Manager: manager / manager123
+# Employee: employee / employee123
 ```
 
 ### Step 7: Run the Application
@@ -437,4 +437,5 @@ For issues and questions:
 - [FAISS](https://github.com/facebookresearch/faiss) - Vector similarity search
 
 - [Django](https://www.djangoproject.com/) - Web framework
+
 
