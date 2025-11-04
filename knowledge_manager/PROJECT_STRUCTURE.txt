@@ -1,0 +1,225 @@
+Knowledge Management System - Complete Project Structure
+===============================================================
+
+knowledge_manager/                          # Project root directory
+│
+├── manage.py                               # Django management script
+├── requirements.txt                        # Python dependencies
+├── .env.example                           # Environment configuration template
+├── .env                                   # Actual environment config (create this)
+├── README.md                              # Main documentation
+├── SETUP_GUIDE.md                         # Quick setup instructions
+├── PROJECT_STRUCTURE.txt                  # This file
+│
+├── knowledge_manager/                     # Django project settings
+│   ├── __init__.py
+│   ├── settings.py                       # Main settings (✓ Created)
+│   ├── urls.py                           # Project URL routing (✓ Created)
+│   ├── wsgi.py                           # WSGI entry point
+│   └── asgi.py                           # ASGI entry point (optional)
+│
+├── app_core/                              # Main application
+│   ├── __init__.py
+│   ├── models.py                         # Database models (✓ Created)
+│   ├── views.py                          # View functions (✓ Created)
+│   ├── urls.py                           # App URL routing (✓ Created)
+│   ├── forms.py                          # Django forms (✓ Created)
+│   ├── admin.py                          # Admin configuration (✓ Created)
+│   ├── apps.py                           # App configuration
+│   │
+│   ├── cache_manager.py                  # Embedding model caching (✓ Created)
+│   ├── document_processor.py             # Text extraction (✓ Created)
+│   ├── faiss_manager.py                  # Vector store management (✓ Created)
+│   ├── ollama_client.py                  # LLM client (✓ Created)
+│   ├── rag_pipeline.py                   # RAG orchestration (✓ Created)
+│   │
+│   ├── management/                       # Custom management commands
+│   │   ├── __init__.py
+│   │   └── commands/
+│   │       ├── __init__.py
+│   │       └── setup_system.py          # Setup command (✓ Created)
+│   │
+│   ├── migrations/                       # Database migrations
+│   │   ├── __init__.py
+│   │   └── 0001_initial.py              # (auto-generated)
+│   │
+│   ├── templates/                        # HTML templates
+│   │   └── app_core/
+│   │       ├── base.html                # Base template (✓ Created)
+│   │       ├── login.html               # Login page (✓ Created)
+│   │       ├── dashboard.html           # Dashboard (✓ Created)
+│   │       ├── chat.html                # Query interface (✓ Created)
+│   │       ├── documents.html           # Document list (✓ Created)
+│   │       ├── upload.html              # Upload form (✓ Created)
+│   │       ├── document_detail.html     # Document view (✓ Created)
+│   │       ├── system_status.html       # System status (✓ Created)
+│   │       ├── profile.html             # User profile (create)
+│   │       ├── query_history.html       # Query history (create)
+│   │       ├── user_list.html           # User management (create)
+│   │       ├── user_create.html         # Create user (create)
+│   │       ├── document_confirm_delete.html  # Delete confirmation (create)
+│   │       └── document_confirm_reindex.html # Reindex confirmation (create)
+│   │
+│   ├── static/                           # Static files (CSS, JS, images)
+│   │   ├── css/
+│   │   │   └── custom.css               # Custom styles (optional)
+│   │   ├── js/
+│   │   │   └── custom.js                # Custom JavaScript (optional)
+│   │   └── images/
+│   │       └── logo.png                 # Logo (optional)
+│   │
+│   └── tests/                            # Unit tests
+│       ├── __init__.py
+│       ├── test_models.py               # Model tests (optional)
+│       ├── test_views.py                # View tests (optional)
+│       └── test_rag_pipeline.py         # RAG tests (optional)
+│
+├── media/                                 # User uploaded files (auto-created)
+│   └── documents/                        # Organized by date
+│       └── 2024/
+│           └── 11/
+│               └── 03/
+│                   └── sample.pdf
+│
+├── models_cache/                         # Cached embedding models (auto-created)
+│   └── sentence-transformers_all-MiniLM-L6-v2/
+│       ├── config.json
+│       ├── pytorch_model.bin
+│       └── ...
+│
+├── faiss_index/                          # FAISS vector store (auto-created)
+│   ├── index.faiss                      # Vector index
+│   └── metadata.pkl                     # Chunk metadata
+│
+├── staticfiles/                          # Collected static files (production)
+│   └── ...
+│
+├── db.sqlite3                            # SQLite database (auto-created)
+├── knowledge_manager.log                 # Application logs (auto-created)
+│
+└── venv/                                 # Virtual environment (create this)
+    ├── bin/                              # (Linux/macOS)
+    ├── Scripts/                          # (Windows)
+    ├── lib/
+    └── ...
+
+
+KEY FILES STATUS:
+═════════════════
+✓ Created  - File is ready to use
+⚠ Create   - You need to create this file
+🔄 Auto    - Django/System creates automatically
+
+
+CRITICAL FILES TO CREATE MANUALLY:
+═══════════════════════════════════
+1. .env                                   - Copy from .env.example and configure
+2. venv/                                  - Create with: python -m venv venv
+
+
+OPTIONAL TEMPLATES TO CREATE:
+══════════════════════════════
+These templates enhance functionality but system works without them:
+
+1. profile.html                           - User profile editing
+2. query_history.html                     - View past queries
+3. user_list.html                         - Admin user management
+4. user_create.html                       - Create new users
+5. document_confirm_delete.html           - Delete confirmation
+6. document_confirm_reindex.html          - Reindex confirmation
+
+
+DIRECTORY CREATION:
+═══════════════════
+Run these commands to create necessary directories:
+
+mkdir -p app_core/templates/app_core
+mkdir -p app_core/static/{css,js,images}
+mkdir -p app_core/management/commands
+mkdir -p app_core/migrations
+mkdir -p media/documents
+mkdir -p models_cache
+mkdir -p faiss_index
+mkdir -p staticfiles
+
+
+FILE PERMISSIONS (Linux/macOS):
+════════════════════════════════
+chmod +x manage.py
+chmod 755 app_core/management/commands/setup_system.py
+
+
+SETUP CHECKLIST:
+════════════════
+□ Create virtual environment: python -m venv venv
+□ Activate virtual environment
+□ Install dependencies: pip install -r requirements.txt
+□ Copy .env.example to .env
+□ Create directories (see above)
+□ Run migrations: python manage.py migrate
+□ Create superuser: python manage.py createsuperuser
+□ Download embedding model: python manage.py setup_system
+□ Install Ollama: curl -fsSL https://ollama.ai/install.sh | sh
+□ Pull LLM model: ollama pull llama3.2:3b
+□ Start Ollama: ollama serve
+□ Start Django: python manage.py runserver
+□ Access: http://localhost:8000
+
+
+PRODUCTION ADDITIONS:
+═════════════════════
+For production deployment, also create:
+
+- nginx.conf                              - Nginx configuration
+- gunicorn.conf.py                        - Gunicorn settings
+- systemd/kms.service                     - Systemd service
+- requirements-prod.txt                   - Production dependencies
+- docker-compose.yml                      - Docker setup (optional)
+- .gitignore                              - Git ignore rules
+
+
+GIT IGNORE RECOMMENDATIONS:
+═══════════════════════════
+Add to .gitignore:
+
+.env
+db.sqlite3
+*.pyc
+__pycache__/
+venv/
+media/
+models_cache/
+faiss_index/
+staticfiles/
+*.log
+.DS_Store
+
+
+BACKUP IMPORTANT DIRECTORIES:
+══════════════════════════════
+Regularly backup:
+
+- db.sqlite3                              - Database
+- media/                                  - Uploaded documents
+- faiss_index/                            - Vector store
+- models_cache/                           - Optional (can re-download)
+
+
+ESTIMATED DISK USAGE:
+═════════════════════
+- Base installation: ~500 MB
+- Embedding model cache: ~100 MB
+- FAISS index: ~10 MB per 10,000 chunks
+- Media files: Depends on uploads
+- Ollama model (llama3.2:3b): ~2 GB
+
+Total: ~3-4 GB for basic setup
+
+
+NEXT STEPS:
+═══════════
+1. Review this structure
+2. Create missing directories
+3. Follow SETUP_GUIDE.md
+4. Run the setup command: python manage.py setup_system --create-demo-users
+5. Start developing!
