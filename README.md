@@ -1,6 +1,6 @@
 # 📚 Knowledge Management System with RAG
 
-A fully local, offline-capable Django application implementing Retrieval-Augmented Generation (RAG) for internal company document management and querying using Ollama (Llama 3.2 3B).
+A fully local, offline-capable Django application implementing Retrieval-Augmented Generation (RAG) for internal company document management and querying using Ollama (Llama 3.2 1B).
 
 ## 🎯 Features
 
@@ -9,7 +9,7 @@ A fully local, offline-capable Django application implementing Retrieval-Augment
 - **RAG-Powered Q&A** - Ask questions, get answers from your documents
 - **Access Control** - Multi-tier document authorization (Public, Department, Manager, Private)
 - **Low Resource Requirements** - Optimized for ≤8GB RAM, CPU-only
-- **Local LLM** - Uses Ollama with Llama 3.2 3B model
+- **Local LLM** - Uses Ollama with Llama 3.2 1B model
 - **Cached Embeddings** - Download embedding model once, use offline forever
 - **FAISS Vector Search** - Fast similarity search for relevant chunks
 
@@ -275,10 +275,10 @@ QUERY_CACHE_SIZE=50
 
 ```bash
 # Timeout for LLM inference (seconds)
-OLLAMA_TIMEOUT=120
+OLLAMA_TIMEOUT=3600
 
 # Change model (must be pulled first)
-OLLAMA_MODEL=llama3.2:3b
+OLLAMA_MODEL=llama3.2:1b
 ```
 
 ## 🛠️ Troubleshooting
@@ -294,7 +294,7 @@ ollama serve
 ollama list
 
 # Test generation
-ollama run llama3.2:3b "Hello"
+ollama run llama3.2:1b "Hello"
 ```
 
 ### Issue: Out of memory
@@ -404,7 +404,7 @@ pip install psycopg2-binary
 
 ## 📝 License
 
-[Your License Here]
+GNU Affero General Public License v3.0
 
 ## 🤝 Contributing
 
@@ -418,13 +418,13 @@ Contributions welcome! Please follow these guidelines:
 ## 📧 Support
 
 For issues and questions:
-- GitHub Issues: [Your Repo URL]
-- Email: [Your Email]
-- Documentation: [Your Docs URL]
+- GitHub Issues: Send me issues
+- Documentation: Look up into repos files, there are a lot!
 
 ## 🙏 Acknowledgments
 
 - [Ollama](https://ollama.ai/) - Local LLM inference
 - [Sentence Transformers](https://www.sbert.net/) - Embedding models
 - [FAISS](https://github.com/facebookresearch/faiss) - Vector similarity search
+
 - [Django](https://www.djangoproject.com/) - Web framework
