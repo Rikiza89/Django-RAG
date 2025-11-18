@@ -53,12 +53,12 @@ knowledge_manager/                          # Project root directory
 │   │       ├── upload.html              # Upload form (✓ Created)
 │   │       ├── document_detail.html     # Document view (✓ Created)
 │   │       ├── system_status.html       # System status (✓ Created)
-│   │       ├── profile.html             # User profile (⚠ Create)
-│   │       ├── query_history.html       # Query history (⚠ Create)
-│   │       ├── user_list.html           # User management (⚠ Create)
-│   │       ├── user_create.html         # Create user (⚠ Create)
-│   │       ├── document_confirm_delete.html  # Delete confirmation (⚠ Create)
-│   │       └── document_confirm_reindex.html # Reindex confirmation (⚠ Create)
+│   │       ├── profile.html             # User profile (✓ Created)
+│   │       ├── query_history.html       # Query history (✓ Created)
+│   │       ├── user_list.html           # User management (✓ Created)
+│   │       ├── user_create.html         # Create user (✓ Created)
+│   │       ├── document_confirm_delete.html  # Delete confirmation (✓ Created)
+│   │       └── document_confirm_reindex.html # Reindex confirmation (✓ Created)
 │   │
 │   ├── static/                           # Static files (CSS, JS, images)
 │   │   ├── css/
@@ -115,32 +115,6 @@ CRITICAL FILES TO CREATE MANUALLY:
 ═══════════════════════════════════
 1. .env                                   - Copy from .env.example and configure
 2. venv/                                  - Create with: python -m venv venv
-
-
-OPTIONAL TEMPLATES TO CREATE:
-══════════════════════════════
-These templates enhance functionality but system works without them:
-
-1. profile.html                           - User profile editing
-2. query_history.html                     - View past queries
-3. user_list.html                         - Admin user management
-4. user_create.html                       - Create new users
-5. document_confirm_delete.html           - Delete confirmation
-6. document_confirm_reindex.html          - Reindex confirmation
-
-
-DIRECTORY CREATION:
-═══════════════════
-Run these commands to create necessary directories:
-
-mkdir -p app_core/templates/app_core
-mkdir -p app_core/static/{css,js,images}
-mkdir -p app_core/management/commands
-mkdir -p app_core/migrations
-mkdir -p media/documents
-mkdir -p models_cache
-mkdir -p faiss_index
-mkdir -p staticfiles
 
 
 FILE PERMISSIONS (Linux/macOS):
@@ -222,5 +196,5 @@ NEXT STEPS:
 2. Create missing directories
 3. Follow SETUP_GUIDE.md
 4. Run the setup command: python manage.py setup_system --create-demo-users
-
 5. Start developing!
+
