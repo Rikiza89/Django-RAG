@@ -21,7 +21,6 @@ from .rag_pipeline import rag_pipeline
 
 logger = logging.getLogger(__name__)
 
-
 # ============= Authentication Views =============
 
 def login_view(request):
@@ -44,14 +43,12 @@ def login_view(request):
     
     return render(request, 'app_core/login.html')
 
-
 @login_required
 def logout_view(request):
     """User logout view"""
     logout(request)
     messages.info(request, 'You have been logged out.')
     return redirect('login')
-
 
 # ============= Dashboard Views =============
 
@@ -108,7 +105,6 @@ def dashboard(request):
     }
     
     return render(request, 'app_core/dashboard.html', context)
-
 
 # ============= Document Views =============
 
@@ -178,7 +174,6 @@ def document_list(request):
     
     return render(request, 'app_core/documents.html', context)
 
-
 @login_required
 def document_upload(request):
     """Upload and process new document"""
@@ -236,7 +231,6 @@ def document_upload(request):
     
     return render(request, 'app_core/upload.html', context)
 
-
 @login_required
 def document_detail(request, pk):
     """View document details"""
@@ -256,7 +250,6 @@ def document_detail(request, pk):
     
     return render(request, 'app_core/document_detail.html', context)
 
-
 @login_required
 def document_download(request, pk):
     """Download document file"""
@@ -271,7 +264,6 @@ def document_download(request, pk):
         as_attachment=True,
         filename=document.file.name.split('/')[-1]
     )
-
 
 @login_required
 def document_delete(request, pk):
@@ -304,7 +296,6 @@ def document_delete(request, pk):
     
     return render(request, 'app_core/document_confirm_delete.html', {'document': document})
 
-
 @login_required
 def document_reindex(request, pk):
     """Reindex a document"""
@@ -333,7 +324,6 @@ def document_reindex(request, pk):
     
     return render(request, 'app_core/document_confirm_reindex.html', {'document': document})
 
-
 # ============= Chat / Query Views =============
 
 @login_required
@@ -346,7 +336,6 @@ def chat(request):
     }
     
     return render(request, 'app_core/chat.html', context)
-
 
 @login_required
 @require_http_methods(["POST"])
@@ -386,7 +375,6 @@ def query_api(request):
             'error': str(e)
         }, status=500)
 
-
 @login_required
 def query_history(request):
     """View query history"""
@@ -402,7 +390,6 @@ def query_history(request):
     }
     
     return render(request, 'app_core/query_history.html', context)
-
 
 # ============= System Management Views =============
 
@@ -431,7 +418,6 @@ def system_status(request):
     
     return render(request, 'app_core/system_status.html', context)
 
-
 @login_required
 @require_http_methods(["POST"])
 def clear_cache(request):
@@ -446,7 +432,6 @@ def clear_cache(request):
         return JsonResponse({'success': True, 'message': 'Cache cleared successfully'})
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
-
 
 # ============= User Management Views =============
 
@@ -472,7 +457,6 @@ def profile(request):
     
     return render(request, 'app_core/profile.html', context)
 
-
 @login_required
 def user_list(request):
     """List all users (admin only)"""
@@ -493,7 +477,6 @@ def user_list(request):
     }
     
     return render(request, 'app_core/user_list.html', context)
-
 
 @login_required
 def user_create(request):
@@ -519,7 +502,6 @@ def user_create(request):
     
     return render(request, 'app_core/user_create.html', context)
 
-
 # ============= API Views =============
 
 @login_required
@@ -535,7 +517,6 @@ def api_check_ollama(request):
     }
     
     return JsonResponse(status)
-
 
 @login_required
 def api_embedding_status(request):
