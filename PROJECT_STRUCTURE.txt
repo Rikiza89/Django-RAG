@@ -6,7 +6,7 @@ knowledge_manager/                          # Project root directory
 ├── manage.py                               # Django management script
 ├── requirements.txt                        # Python dependencies
 ├── .env.example                           # Environment configuration template
-├── .env                                   # Actual environment config (create this)
+├── .env                                   # Actual environment config (⚠ Create)
 ├── README.md                              # Main documentation
 ├── SETUP_GUIDE.md                         # Quick setup instructions
 ├── PROJECT_STRUCTURE.txt                  # This file
@@ -41,7 +41,7 @@ knowledge_manager/                          # Project root directory
 │   │
 │   ├── migrations/                       # Database migrations
 │   │   ├── __init__.py
-│   │   └── 0001_initial.py              # (auto-generated)
+│   │   └── 0001_initial.py              # (🔄 Auto)
 │   │
 │   ├── templates/                        # HTML templates
 │   │   └── app_core/
@@ -53,12 +53,12 @@ knowledge_manager/                          # Project root directory
 │   │       ├── upload.html              # Upload form (✓ Created)
 │   │       ├── document_detail.html     # Document view (✓ Created)
 │   │       ├── system_status.html       # System status (✓ Created)
-│   │       ├── profile.html             # User profile (create)
-│   │       ├── query_history.html       # Query history (create)
-│   │       ├── user_list.html           # User management (create)
-│   │       ├── user_create.html         # Create user (create)
-│   │       ├── document_confirm_delete.html  # Delete confirmation (create)
-│   │       └── document_confirm_reindex.html # Reindex confirmation (create)
+│   │       ├── profile.html             # User profile (⚠ Create)
+│   │       ├── query_history.html       # Query history (⚠ Create)
+│   │       ├── user_list.html           # User management (⚠ Create)
+│   │       ├── user_create.html         # Create user (⚠ Create)
+│   │       ├── document_confirm_delete.html  # Delete confirmation (⚠ Create)
+│   │       └── document_confirm_reindex.html # Reindex confirmation (⚠ Create)
 │   │
 │   ├── static/                           # Static files (CSS, JS, images)
 │   │   ├── css/
@@ -74,30 +74,30 @@ knowledge_manager/                          # Project root directory
 │       ├── test_views.py                # View tests (optional)
 │       └── test_rag_pipeline.py         # RAG tests (optional)
 │
-├── media/                                 # User uploaded files (auto-created)
+├── media/                                 # User uploaded files (🔄 Auto)
 │   └── documents/                        # Organized by date
 │       └── 2024/
 │           └── 11/
 │               └── 03/
 │                   └── sample.pdf
 │
-├── models_cache/                         # Cached embedding models (auto-created)
+├── models_cache/                         # Cached embedding models (🔄 Auto)
 │   └── sentence-transformers_all-MiniLM-L6-v2/
 │       ├── config.json
 │       ├── pytorch_model.bin
 │       └── ...
 │
-├── faiss_index/                          # FAISS vector store (auto-created)
+├── faiss_index/                          # FAISS vector store (🔄 Auto)
 │   ├── index.faiss                      # Vector index
 │   └── metadata.pkl                     # Chunk metadata
 │
 ├── staticfiles/                          # Collected static files (production)
 │   └── ...
 │
-├── db.sqlite3                            # SQLite database (auto-created)
-├── knowledge_manager.log                 # Application logs (auto-created)
+├── db.sqlite3                            # SQLite database (🔄 Auto)
+├── knowledge_manager.log                 # Application logs (🔄 Auto)
 │
-└── venv/                                 # Virtual environment (create this)
+└── venv/                                 # Virtual environment (⚠ Create)
     ├── bin/                              # (Linux/macOS)
     ├── Scripts/                          # (Windows)
     ├── lib/
@@ -222,4 +222,5 @@ NEXT STEPS:
 2. Create missing directories
 3. Follow SETUP_GUIDE.md
 4. Run the setup command: python manage.py setup_system --create-demo-users
+
 5. Start developing!
