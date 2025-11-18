@@ -306,10 +306,6 @@ class OllamaClient:
 
         return "\n".join(prompt_parts)
 
-
-
-
-
     def chat(self, messages, temperature=0.7, max_tokens=1000):
         """
         Chat with the model (multi-turn conversation)
@@ -384,6 +380,6 @@ class OllamaClient:
             logger.error(f"Failed to pull model: {str(e)}")
             return False
 
-
 # Singleton instance
+
 ollama_client = OllamaClient()
