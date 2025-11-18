@@ -128,45 +128,107 @@ Visit: `http://localhost:8000`
 ## 📁 Project Structure
 
 ```
-knowledge_manager/
-├── manage.py
-├── requirements.txt
-├── .env
-├── README.md
+knowledge_manager/                          # Project root directory
 │
-├── knowledge_manager/           # Project settings
-│   ├── settings.py
-│   ├── urls.py
-│   └── wsgi.py
+├── manage.py                               # Django management script
+├── requirements.txt                        # Python dependencies
+├── .env.example                           # Environment configuration template
+├── .env                                   # Actual environment config 
+├── README.md                              # Main documentation
+├── SETUP_GUIDE.md                         # Quick setup instructions
+├── PROJECT_STRUCTURE.txt                  # This file
 │
-├── app_core/                    # Main application
-│   ├── models.py                # Document, User, Chunk models
-│   ├── views.py                 # Django views
-│   ├── forms.py                 # Django forms
-│   ├── urls.py                  # URL routing
-│   │
-│   ├── cache_manager.py         # Embedding model caching
-│   ├── document_processor.py    # Text extraction & chunking
-│   ├── faiss_manager.py         # FAISS vector store
-│   ├── ollama_client.py         # Ollama API client
-│   ├── rag_pipeline.py          # Complete RAG orchestration
-│   │
-│   ├── templates/               # HTML templates
-│   │   ├── base.html
-│   │   ├── login.html
-│   │   ├── dashboard.html
-│   │   ├── upload.html
-│   │   ├── chat.html
-│   │   └── documents.html
-│   │
-│   └── static/                  # CSS, JS
-│       ├── css/
-│       └── js/
+├── knowledge_manager/                     # Django project settings
+│   ├── __init__.py
+│   ├── settings.py                       # Main settings 
+│   ├── urls.py                           # Project URL routing 
+│   ├── wsgi.py                           # WSGI entry point
+│   └── asgi.py                           # ASGI entry point
 │
-├── media/                       # Uploaded documents
-├── models_cache/                # Cached embedding model
-├── faiss_index/                 # Vector store
-└── db.sqlite3                   # Database
+├── app_core/                              # Main application
+│   ├── __init__.py
+│   ├── models.py                         # Database models
+│   ├── views.py                          # View functions
+│   ├── urls.py                           # App URL routing
+│   ├── forms.py                          # Django forms
+│   ├── admin.py                          # Admin configuration
+│   ├── apps.py                           # App configuration
+│   │
+│   ├── cache_manager.py                  # Embedding model caching
+│   ├── document_processor.py             # Text extraction
+│   ├── faiss_manager.py                  # Vector store management
+│   ├── ollama_client.py                  # LLM client
+│   ├── rag_pipeline.py                   # RAG orchestration
+│   │
+│   ├── management/                       # Custom management commands for setup
+│   │   ├── __init__.py
+│   │   └── commands/
+│   │       ├── __init__.py
+│   │       └── setup_system.py          # Setup command
+│   │
+│   ├── migrations/                       # Database migrations
+│   │   ├── __init__.py
+│   │   └── 0001_initial.py              
+│   │
+│   ├── templates/                        # HTML templates
+│   │   └── app_core/
+│   │       ├── base.html                # Base template
+│   │       ├── login.html               # Login page
+│   │       ├── dashboard.html           # Dashboard
+│   │       ├── chat.html                # Query interface
+│   │       ├── documents.html           # Document list
+│   │       ├── upload.html              # Upload form
+│   │       ├── document_detail.html     # Document view
+│   │       ├── system_status.html       # System status
+│   │       ├── profile.html             # User profile
+│   │       ├── query_history.html       # Query history
+│   │       ├── user_list.html           # User management
+│   │       ├── user_create.html         # Create user
+│   │       ├── document_confirm_delete.html  # Delete confirmation
+│   │       └── document_confirm_reindex.html # Reindex confirmation
+│   │
+│   ├── static/                           # Static files (CSS, JS, images)
+│   │   ├── css/
+│   │   │   └── custom.css               # Custom styles (optional)
+│   │   ├── js/
+│   │   │   └── custom.js                # Custom JavaScript (optional)
+│   │   └── images/
+│   │       └── logo.png                 # Logo (optional)
+│   │
+│   └── tests/                            # Unit tests
+│       ├── __init__.py
+│       ├── test_models.py               # Model tests (optional)
+│       ├── test_views.py                # View tests (optional)
+│       └── test_rag_pipeline.py         # RAG tests (optional)
+│
+├── media/                                 # User uploaded files
+│   └── documents/                        # Organized by date
+│       └── 2024/
+│           └── 11/
+│               └── 03/
+│                   └── sample.pdf
+│
+├── models_cache/                         # Cached embedding models
+│   └── sentence-transformers_all-MiniLM-L6-v2/
+│       ├── config.json
+│       ├── pytorch_model.bin
+│       └── ...
+│
+├── faiss_index/                          # FAISS vector store
+│   ├── index.faiss                      # Vector index
+│   └── metadata.pkl                     # Chunk metadata
+│
+├── staticfiles/                          # Collected static files (production)
+│   └── ...
+│
+├── db.sqlite3                            # SQLite database
+├── knowledge_manager.log                 # Application logs
+│
+└── venv/                                 # Virtual environment
+    ├── bin/                              # (Linux/macOS)
+    ├── Scripts/                          # (Windows)
+    ├── lib/
+    └── ...
 ```
 
 ## 🔧 Usage
@@ -435,7 +497,7 @@ For issues and questions:
 - [Ollama](https://ollama.ai/) - Local LLM inference
 - [Sentence Transformers](https://www.sbert.net/) - Embedding models
 - [FAISS](https://github.com/facebookresearch/faiss) - Vector similarity search
-
 - [Django](https://www.djangoproject.com/) - Web framework
+
 
 
