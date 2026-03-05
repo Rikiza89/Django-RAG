@@ -14,6 +14,25 @@ import os
 from pathlib import Path
 from decouple import config, Csv
 
+# ===== GPU Auto-Detection =====
+def _detect_device():
+    """Auto-detect best available compute device (CUDA > CPU). Gracefully falls back if torch is missing."""
+    try:
+        import torch
+        if torch.cuda.is_available():
+            gpu_name = torch.cuda.get_device_name(0)
+            vram_gb = torch.cuda.get_device_properties(0).total_memory / (1024 ** 3)
+            print(f"[GPU] Detected: {gpu_name} | VRAM: {vram_gb:.1f} GB | Using CUDA")
+            return 'cuda'
+        print("[GPU] No CUDA device found — running on CPU")
+        return 'cpu'
+    except ImportError:
+        print("[GPU] torch not installed — defaulting to CPU")
+        return 'cpu'
+
+AUTO_DEVICE = _detect_device()
+USE_GPU = AUTO_DEVICE == 'cuda'
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -40,7 +59,8 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     'app_core',
-    'django_apscheduler',    
+    'coding_ide',
+    'django_apscheduler',
 ]
 
 MIDDLEWARE = [
@@ -66,6 +86,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'coding_ide.context_processors.gpu_context',
             ],
         },
     },
@@ -147,7 +168,7 @@ EMBEDDING_MODEL = config('EMBEDDING_MODEL', default='intfloat/multilingual-e5-sm
 # EMBEDDING_MODEL = config('EMBEDDING_MODEL', default='sentence-transformers/all-MiniLM-L6-v2')
 MODELS_CACHE_DIR = BASE_DIR / config('MODELS_CACHE_DIR', default='models_cache')
 EMBEDDING_BATCH_SIZE = config('EMBEDDING_BATCH_SIZE', default=16, cast=int)
-EMBEDDING_DEVICE = config('EMBEDDING_DEVICE', default='cpu')
+EMBEDDING_DEVICE = config('EMBEDDING_DEVICE', default=AUTO_DEVICE)
 
 # FAISS Configuration
 FAISS_INDEX_PATH = BASE_DIR / config('FAISS_INDEX_PATH', default='faiss_index')
@@ -168,6 +189,47 @@ ALLOWED_EXTENSIONS = config('ALLOWED_EXTENSIONS', default='.pdf,.docx,.txt,.xlsx
 os.makedirs(MODELS_CACHE_DIR, exist_ok=True)
 os.makedirs(FAISS_INDEX_PATH, exist_ok=True)
 os.makedirs(MEDIA_ROOT, exist_ok=True)
+
+# ===== Coding IDE Configuration =====
+
+# Ollama model for code generation (Qwen 2.5 Coder — optimized for 8 GB VRAM)
+CODING_OLLAMA_HOST = config('CODING_OLLAMA_HOST', default='http://localhost:11434')
+CODING_OLLAMA_MODEL = config('CODING_OLLAMA_MODEL', default='qwen2.5-coder:7b')
+CODING_OLLAMA_TIMEOUT = config('CODING_OLLAMA_TIMEOUT', default=180, cast=int)
+
+# Code embedding model (code-aware)
+CODE_EMBEDDING_MODEL = config('CODE_EMBEDDING_MODEL', default='sentence-transformers/all-MiniLM-L6-v2')
+CODE_MODELS_CACHE_DIR = BASE_DIR / config('CODE_MODELS_CACHE_DIR', default='code_models_cache')
+CODE_EMBEDDING_BATCH_SIZE = config('CODE_EMBEDDING_BATCH_SIZE', default=8, cast=int)
+CODE_EMBEDDING_DEVICE = config('CODE_EMBEDDING_DEVICE', default=AUTO_DEVICE)
+
+# Code FAISS index (separate from docs)
+CODE_FAISS_INDEX_PATH = BASE_DIR / config('CODE_FAISS_INDEX_PATH', default='code_faiss_index')
+CODE_FAISS_TOP_K = config('CODE_FAISS_TOP_K', default=5, cast=int)
+
+# Code chunking (larger chunks to preserve context)
+CODE_CHUNK_SIZE = config('CODE_CHUNK_SIZE', default=400, cast=int)
+CODE_CHUNK_OVERLAP = config('CODE_CHUNK_OVERLAP', default=80, cast=int)
+
+# Supported code file extensions
+CODE_ALLOWED_EXTENSIONS = config(
+    'CODE_ALLOWED_EXTENSIONS',
+    default='.py,.js,.ts,.java,.cpp,.c,.h,.go,.rs,.php,.rb,.swift,.kt,.cs,.html,.css,.sql,.sh,.md,.json,.yaml,.yml,.toml,.txt',
+    cast=Csv()
+)
+
+# Query cache
+CODE_ENABLE_QUERY_CACHE = config('CODE_ENABLE_QUERY_CACHE', default=True, cast=bool)
+CODE_QUERY_CACHE_SIZE = config('CODE_QUERY_CACHE_SIZE', default=30, cast=int)
+
+# Create necessary directories
+os.makedirs(CODE_MODELS_CACHE_DIR, exist_ok=True)
+os.makedirs(CODE_FAISS_INDEX_PATH, exist_ok=True)
+
+# ===== GPU / FAISS Settings =====
+# When USE_GPU=True the FAISS managers will move indexes to GPU memory for faster search.
+# Requires: pip install faiss-gpu-cu12  (CUDA 12.x)  or  faiss-gpu  (CUDA 11.x)
+FAISS_USE_GPU = config('FAISS_USE_GPU', default=USE_GPU, cast=bool)
 
 # Logging Configuration
 LOGGING = {
@@ -194,6 +256,11 @@ LOGGING = {
     },
     'loggers': {
         'app_core': {
+            'handlers': ['file', 'console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'coding_ide': {
             'handlers': ['file', 'console'],
             'level': 'INFO',
             'propagate': False,

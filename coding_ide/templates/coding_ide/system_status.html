@@ -1,0 +1,158 @@
+{% extends 'coding_ide/base_ide.html' %}
+{% block title %}System Status — Coding IDE{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h4 mb-0" style="color:var(--ide-text);">
+        <i class="bi bi-cpu" style="color:var(--ide-accent-light);"></i>
+        System Status
+    </h1>
+    <button onclick="location.reload()" class="btn btn-sm"
+            style="background:rgba(124,58,237,.15); color:var(--ide-accent-light); border:1px solid rgba(124,58,237,.3);">
+        <i class="bi bi-arrow-clockwise"></i> Refresh
+    </button>
+</div>
+
+<div class="row g-3">
+    <!-- LLM -->
+    <div class="col-md-6">
+        <div class="ide-card">
+            <div class="card-header"><i class="bi bi-cpu me-2"></i>LLM (Qwen 2.5 Coder)</div>
+            <div class="card-body">
+                <div class="d-flex align-items-center gap-3 mb-2">
+                    {% if status.llm.connected %}
+                    <span style="color:var(--ide-green); font-size:1.3rem;"><i class="bi bi-circle-fill"></i></span>
+                    <div>
+                        <div style="font-weight:600; color:var(--ide-text);">Ollama Connected</div>
+                        <div style="font-size:.8rem; color:var(--ide-muted);">{{ status.llm.model_name }}</div>
+                    </div>
+                    {% else %}
+                    <span style="color:var(--ide-red); font-size:1.3rem;"><i class="bi bi-circle-fill"></i></span>
+                    <div style="color:var(--ide-text);">Ollama Not Connected</div>
+                    {% endif %}
+                </div>
+                {% if status.llm.connected %}
+                <div style="font-size:.8rem; color:var(--ide-muted);">
+                    Model available:
+                    {% if status.llm.model_available %}
+                    <span style="color:var(--ide-green);">Yes</span>
+                    {% else %}
+                    <span style="color:var(--ide-yellow);">
+                        No — run <code>ollama pull {{ status.llm.model_name }}</code>
+                    </span>
+                    {% endif %}
+                </div>
+                {% else %}
+                <div style="font-size:.8rem; color:var(--ide-muted);">
+                    Start Ollama: <code>ollama serve</code>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Embeddings -->
+    <div class="col-md-6">
+        <div class="ide-card">
+            <div class="card-header"><i class="bi bi-box-seam me-2"></i>Embedding Model</div>
+            <div class="card-body" style="font-size:.85rem;">
+                <dl class="row mb-0">
+                    <dt class="col-5" style="color:var(--ide-muted);">Model</dt>
+                    <dd class="col-7" style="color:var(--ide-text);">{{ status.embedding_model.model_name }}</dd>
+                    <dt class="col-5" style="color:var(--ide-muted);">Cached</dt>
+                    <dd class="col-7">
+                        {% if status.embedding_model.is_cached %}
+                        <span style="color:var(--ide-green);">Yes ({{ status.embedding_model.cache_size_mb }} MB)</span>
+                        {% else %}
+                        <span style="color:var(--ide-yellow);">Not yet downloaded</span>
+                        {% endif %}
+                    </dd>
+                    <dt class="col-5" style="color:var(--ide-muted);">Device</dt>
+                    <dd class="col-7" style="color:var(--ide-text);">{{ status.embedding_model.device|upper }}</dd>
+                    <dt class="col-5" style="color:var(--ide-muted);">Loaded</dt>
+                    <dd class="col-7">
+                        {% if status.embedding_model.model_loaded %}
+                        <span style="color:var(--ide-green);">In memory</span>
+                        {% else %}
+                        <span style="color:var(--ide-muted);">Not loaded</span>
+                        {% endif %}
+                    </dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+
+    <!-- FAISS -->
+    <div class="col-md-6">
+        <div class="ide-card">
+            <div class="card-header"><i class="bi bi-database me-2"></i>Code FAISS Index</div>
+            <div class="card-body" style="font-size:.85rem;">
+                <dl class="row mb-0">
+                    <dt class="col-5" style="color:var(--ide-muted);">Total Chunks</dt>
+                    <dd class="col-7" style="color:var(--ide-text);">{{ status.faiss_index.total_chunks }}</dd>
+                    <dt class="col-5" style="color:var(--ide-muted);">Index Size</dt>
+                    <dd class="col-7" style="color:var(--ide-text);">{{ status.faiss_index.index_size }}</dd>
+                    <dt class="col-5" style="color:var(--ide-muted);">Dimension</dt>
+                    <dd class="col-7" style="color:var(--ide-text);">{{ status.faiss_index.dimension }}</dd>
+                    <dt class="col-5" style="color:var(--ide-muted);">GPU Enabled</dt>
+                    <dd class="col-7">
+                        {% if status.faiss_index.gpu_enabled %}
+                        <span style="color:var(--ide-green);">Yes</span>
+                        {% else %}
+                        <span style="color:var(--ide-muted);">No (CPU)</span>
+                        {% endif %}
+                    </dd>
+                    <dt class="col-5" style="color:var(--ide-muted);">File Size</dt>
+                    <dd class="col-7" style="color:var(--ide-text);">{{ status.faiss_index.index_file_size_mb }} MB</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+
+    <!-- Code files -->
+    <div class="col-md-6">
+        <div class="ide-card">
+            <div class="card-header"><i class="bi bi-files me-2"></i>Knowledge Base</div>
+            <div class="card-body" style="font-size:.85rem;">
+                <dl class="row mb-0">
+                    <dt class="col-5" style="color:var(--ide-muted);">Total Files</dt>
+                    <dd class="col-7" style="color:var(--ide-text);">{{ status.code_files.total }}</dd>
+                    <dt class="col-5" style="color:var(--ide-muted);">Indexed</dt>
+                    <dd class="col-7" style="color:var(--ide-green);">{{ status.code_files.processed }}</dd>
+                    <dt class="col-5" style="color:var(--ide-muted);">Failed</dt>
+                    <dd class="col-7" style="color:var(--ide-red);">{{ status.code_files.failed }}</dd>
+                    <dt class="col-5" style="color:var(--ide-muted);">Query Cache</dt>
+                    <dd class="col-7" style="color:var(--ide-text);">
+                        {% if status.query_cache.enabled %}
+                        {{ status.query_cache.size }}/{{ status.query_cache.max_size }}
+                        {% else %}
+                        Disabled
+                        {% endif %}
+                    </dd>
+                </dl>
+                <form method="post" action="{% url 'coding_ide:api_clear_cache' %}" class="mt-3">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-sm"
+                            style="background:rgba(239,68,68,.1); color:var(--ide-red); border:1px solid rgba(239,68,68,.3); font-size:.78rem;">
+                        <i class="bi bi-trash me-1"></i> Clear Query Cache
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Setup guide -->
+<div class="ide-card mt-3">
+    <div class="card-header"><i class="bi bi-book me-2"></i>Quick Setup Guide</div>
+    <div class="card-body" style="font-size:.82rem; color:var(--ide-muted);">
+        <ol class="mb-0">
+            <li class="mb-1">Install Ollama: <a href="https://ollama.ai" target="_blank" style="color:var(--ide-accent-light);">ollama.ai</a></li>
+            <li class="mb-1">Pull the model: <code>ollama pull qwen2.5-coder:7b</code></li>
+            <li class="mb-1">For GPU support install: <code>pip install faiss-gpu-cu12</code> (CUDA 12.x) or <code>faiss-gpu</code> (CUDA 11.x)</li>
+            <li class="mb-1">Upload code files to the <a href="{% url 'coding_ide:knowledge_base' %}" style="color:var(--ide-accent-light);">Knowledge Base</a></li>
+            <li>Start asking questions in the <a href="{% url 'coding_ide:ide_chat' %}" style="color:var(--ide-accent-light);">Code Assistant</a></li>
+        </ol>
+    </div>
+</div>
+{% endblock %}

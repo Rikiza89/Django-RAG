@@ -8,11 +8,15 @@ PyMuPDF
 python-docx
 openpyxl
 
-# AI/ML - CPU-only versions
+# AI/ML - GPU-aware versions
+# For GPU (CUDA 12.x - RTX 5050 and newer):
+#   pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
+#   pip install faiss-gpu-cu12
+# For CPU-only fallback:
+#   pip install torch faiss-cpu
 sentence-transformers
 torch
 faiss-cpu
-numpy
 
 # Ollama client
 ollama
@@ -27,3 +31,6 @@ requests
 
 # Development
 django-debug-toolbar
+
+# Code IDE - syntax highlighting and code processing
+pygments

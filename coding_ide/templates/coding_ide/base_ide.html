@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Coding IDE — Django-Coding-RAG{% endblock %}</title>
+
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <!-- Prism.js syntax highlighting (tomorrow theme) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+
+    <style>
+        :root {
+            --sidebar-width: 260px;
+            --ide-bg: #1e1e2e;
+            --ide-surface: #2a2a3e;
+            --ide-border: #3a3a5e;
+            --ide-accent: #7c3aed;
+            --ide-accent-light: #a78bfa;
+            --ide-green: #10b981;
+            --ide-yellow: #f59e0b;
+            --ide-red: #ef4444;
+            --ide-text: #e2e8f0;
+            --ide-muted: #94a3b8;
+        }
+
+        html, body { height: 100%; }
+
+        body {
+            background: #0f0f1a;
+            color: var(--ide-text);
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+
+        /* ── Sidebar ── */
+        .ide-sidebar {
+            position: fixed;
+            top: 0; left: 0;
+            width: var(--sidebar-width);
+            height: 100vh;
+            background: var(--ide-bg);
+            border-right: 1px solid var(--ide-border);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            z-index: 1000;
+        }
+
+        .ide-sidebar .brand {
+            padding: 18px 20px 10px;
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--ide-accent-light);
+            border-bottom: 1px solid var(--ide-border);
+            letter-spacing: .02em;
+        }
+
+        .ide-sidebar .brand small {
+            display: block;
+            font-size: .7rem;
+            font-weight: 400;
+            color: var(--ide-muted);
+            margin-top: 2px;
+        }
+
+        .ide-sidebar .nav-section {
+            padding: 12px 14px 4px;
+            font-size: .65rem;
+            text-transform: uppercase;
+            letter-spacing: .1em;
+            color: var(--ide-muted);
+        }
+
+        .ide-sidebar .nav-link {
+            color: var(--ide-muted);
+            padding: 9px 20px;
+            font-size: .88rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-radius: 0;
+            transition: all .15s;
+        }
+
+        .ide-sidebar .nav-link:hover,
+        .ide-sidebar .nav-link.active {
+            color: var(--ide-text);
+            background: rgba(124, 58, 237, .15);
+            border-left: 3px solid var(--ide-accent);
+            padding-left: 17px;
+        }
+
+        .ide-sidebar .nav-link i { width: 18px; font-size: .95rem; }
+
+        .ide-sidebar .user-panel {
+            margin-top: auto;
+            padding: 14px 18px;
+            border-top: 1px solid var(--ide-border);
+            font-size: .8rem;
+        }
+
+        /* ── Main ── */
+        .ide-main {
+            margin-left: var(--sidebar-width);
+            min-height: 100vh;
+            background: #0f0f1a;
+            padding: 24px;
+        }
+
+        /* ── Cards ── */
+        .ide-card {
+            background: var(--ide-surface);
+            border: 1px solid var(--ide-border);
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .ide-card .card-header {
+            background: rgba(124, 58, 237, .1);
+            border-bottom: 1px solid var(--ide-border);
+            border-radius: 10px 10px 0 0;
+            padding: 12px 18px;
+            font-size: .9rem;
+            font-weight: 600;
+            color: var(--ide-text);
+        }
+
+        .ide-card .card-body { padding: 18px; }
+
+        /* ── Code blocks ── */
+        pre[class*="language-"], code[class*="language-"] {
+            font-size: .82rem;
+            border-radius: 8px;
+        }
+
+        pre { max-height: 400px; overflow-y: auto; }
+
+        /* ── Stat cards ── */
+        .stat-ide {
+            background: var(--ide-surface);
+            border: 1px solid var(--ide-border);
+            border-radius: 10px;
+            padding: 18px;
+            border-left: 4px solid var(--ide-accent);
+        }
+
+        .stat-ide.green  { border-left-color: var(--ide-green); }
+        .stat-ide.yellow { border-left-color: var(--ide-yellow); }
+        .stat-ide.red    { border-left-color: var(--ide-red); }
+
+        .stat-ide .stat-val {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--ide-text);
+        }
+
+        .stat-ide .stat-label {
+            font-size: .78rem;
+            color: var(--ide-muted);
+            text-transform: uppercase;
+            letter-spacing: .05em;
+        }
+
+        /* ── Form controls in dark mode ── */
+        .form-control, .form-select {
+            background: #12121f;
+            border: 1px solid var(--ide-border);
+            color: var(--ide-text);
+        }
+
+        .form-control:focus, .form-select:focus {
+            background: #12121f;
+            border-color: var(--ide-accent);
+            color: var(--ide-text);
+            box-shadow: 0 0 0 2px rgba(124, 58, 237, .25);
+        }
+
+        .form-control::placeholder { color: var(--ide-muted); }
+
+        /* ── Badges ── */
+        .lang-badge {
+            font-size: .7rem;
+            padding: 2px 8px;
+            border-radius: 20px;
+            background: rgba(124, 58, 237, .2);
+            color: var(--ide-accent-light);
+            border: 1px solid rgba(124, 58, 237, .3);
+            font-weight: 600;
+        }
+
+        /* ── Alert overrides ── */
+        .alert-dark-info {
+            background: rgba(124, 58, 237, .1);
+            border: 1px solid rgba(124, 58, 237, .3);
+            color: var(--ide-text);
+        }
+
+        /* ── Table ── */
+        .table-ide { color: var(--ide-text); }
+        .table-ide thead th {
+            background: var(--ide-bg);
+            border-color: var(--ide-border);
+            color: var(--ide-muted);
+            font-size: .78rem;
+            text-transform: uppercase;
+            letter-spacing: .05em;
+        }
+        .table-ide td, .table-ide th { border-color: var(--ide-border); }
+        .table-ide tbody tr:hover { background: rgba(124, 58, 237, .06); }
+
+        /* ── Scrollbar ── */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--ide-border); border-radius: 3px; }
+
+        /* ── Back to Knowledge Hub link ── */
+        .hub-link {
+            font-size: .78rem;
+            color: var(--ide-muted);
+            padding: 6px 20px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            text-decoration: none;
+        }
+        .hub-link:hover { color: var(--ide-text); }
+
+        @media (max-width: 768px) {
+            .ide-sidebar { transform: translateX(-100%); transition: transform .3s; }
+            .ide-sidebar.show { transform: translateX(0); }
+            .ide-main { margin-left: 0; }
+        }
+    </style>
+
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+{% if user.is_authenticated %}
+<nav class="ide-sidebar">
+    <div class="brand">
+        <i class="bi bi-code-slash"></i> Coding IDE
+        <small>RAG-powered · Qwen 2.5 Coder</small>
+    </div>
+
+    <ul class="nav flex-column mt-2">
+        <li class="nav-item">
+            <a class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}"
+               href="{% url 'coding_ide:dashboard' %}">
+                <i class="bi bi-grid-1x2"></i> Dashboard
+            </a>
+        </li>
+
+        <li><div class="nav-section">Knowledge Base</div></li>
+        <li class="nav-item">
+            <a class="nav-link {% if request.resolver_match.url_name == 'knowledge_base' %}active{% endif %}"
+               href="{% url 'coding_ide:knowledge_base' %}">
+                <i class="bi bi-journal-code"></i> Code Files
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {% if request.resolver_match.url_name == 'upload_code' %}active{% endif %}"
+               href="{% url 'coding_ide:upload_code' %}">
+                <i class="bi bi-upload"></i> Upload Code
+            </a>
+        </li>
+
+        <li><div class="nav-section">IDE</div></li>
+        <li class="nav-item">
+            <a class="nav-link {% if request.resolver_match.url_name == 'ide_chat' %}active{% endif %}"
+               href="{% url 'coding_ide:ide_chat' %}">
+                <i class="bi bi-terminal"></i> Code Assistant
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {% if request.resolver_match.url_name == 'query_history' %}active{% endif %}"
+               href="{% url 'coding_ide:query_history' %}">
+                <i class="bi bi-clock-history"></i> History
+            </a>
+        </li>
+
+        <li><div class="nav-section">System</div></li>
+        <li class="nav-item">
+            <a class="nav-link {% if request.resolver_match.url_name == 'system_status' %}active{% endif %}"
+               href="{% url 'coding_ide:system_status' %}">
+                <i class="bi bi-cpu"></i> Status
+            </a>
+        </li>
+    </ul>
+
+    <div style="padding: 10px 0;">
+        <a href="{% url 'dashboard' %}" class="hub-link">
+            <i class="bi bi-arrow-left-circle"></i> Back to Knowledge Hub
+        </a>
+        <a href="{% url 'logout' %}" class="hub-link">
+            <i class="bi bi-box-arrow-right"></i> Logout
+        </a>
+    </div>
+
+    <div class="user-panel">
+        <div style="color: var(--ide-muted); font-size: .7rem;">Signed in as</div>
+        <div style="font-weight: 600;">{{ user.username }}</div>
+        <div>
+            <span style="font-size:.7rem; background:rgba(124,58,237,.2); color:var(--ide-accent-light);
+                          padding:1px 8px; border-radius:20px;">
+                GPU: {% if USE_GPU %}ON{% else %}OFF{% endif %}
+            </span>
+        </div>
+    </div>
+</nav>
+{% endif %}
+
+<div class="{% if user.is_authenticated %}ide-main{% else %}container mt-5{% endif %}">
+    {% if messages %}
+    <div class="mb-3">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% block content %}{% endblock %}
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

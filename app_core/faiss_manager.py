@@ -14,24 +14,39 @@ from .cache_manager import embedding_cache
 logger = logging.getLogger(__name__)
 
 
+def _get_gpu_resource():
+    """Return a FAISS GPU resource if CUDA is available and faiss-gpu is installed."""
+    use_gpu = getattr(settings, 'FAISS_USE_GPU', False)
+    if not use_gpu:
+        return None
+    try:
+        res = faiss.StandardGpuResources()
+        logger.info("FAISS GPU resource initialised")
+        return res
+    except AttributeError:
+        logger.warning("faiss-gpu not installed; falling back to CPU FAISS")
+        return None
+
+
 class FAISSManager:
     """
-    Manages FAISS index for document embeddings
-    CPU-optimized for low-resource environments
+    Manages FAISS index for document embeddings.
+    Supports GPU acceleration when FAISS_USE_GPU=True and faiss-gpu is installed.
     """
-    
+
     def __init__(self):
         self.index_path = settings.FAISS_INDEX_PATH
         self.metadata_path = self.index_path / 'metadata.pkl'
         self.index_file = self.index_path / 'index.faiss'
-        
+
         self.index = None
+        self._gpu_res = _get_gpu_resource()
         self.metadata = []  # List of dicts with chunk info
         self.dimension = None
-        
+
         # Ensure directory exists
         os.makedirs(self.index_path, exist_ok=True)
-        
+
         # Load existing index if available
         self.load_index()
     
@@ -46,16 +61,24 @@ class FAISSManager:
             dimension = embedding_cache.get_embedding_dimension()
         
         self.dimension = dimension
-        
-        # Use Flat (exact) index for CPU - no approximation needed for small datasets
+
+        # Build a flat L2 index and wrap with IDMap
         logger.info(f"Initializing FAISS Flat index with dimension {dimension}")
-        self.index = faiss.IndexFlatL2(dimension)
-        
-        # Wrap with IDMap to track IDs
-        self.index = faiss.IndexIDMap(self.index)
-        
+        cpu_index = faiss.IndexFlatL2(dimension)
+        cpu_index = faiss.IndexIDMap(cpu_index)
+
+        # Move to GPU if a GPU resource is available
+        if self._gpu_res is not None:
+            try:
+                self.index = faiss.index_cpu_to_gpu(self._gpu_res, 0, cpu_index)
+                logger.info("FAISS index moved to GPU")
+            except Exception as e:
+                logger.warning(f"Failed to move FAISS index to GPU: {e}; using CPU")
+                self.index = cpu_index
+        else:
+            self.index = cpu_index
+
         self.metadata = []
-        
         logger.info("FAISS index initialized successfully")
     
     def add_documents(self, chunks, document_id, document_info):
@@ -245,10 +268,15 @@ class FAISSManager:
         self.save_index()
     
     def save_index(self):
-        """Save FAISS index and metadata to disk"""
+        """Save FAISS index and metadata to disk (converts GPU index to CPU first)."""
         try:
             if self.index is not None:
-                faiss.write_index(self.index, str(self.index_file))
+                # GPU indexes must be cloned to CPU before writing
+                try:
+                    cpu_index = faiss.index_gpu_to_cpu(self.index)
+                except AttributeError:
+                    cpu_index = self.index  # already CPU
+                faiss.write_index(cpu_index, str(self.index_file))
                 logger.info(f"FAISS index saved to {self.index_file}")
             
             with open(self.metadata_path, 'wb') as f:
@@ -263,12 +291,23 @@ class FAISSManager:
             raise
     
     def load_index(self):
-        """Load FAISS index and metadata from disk"""
+        """Load FAISS index and metadata from disk, then optionally move to GPU."""
         try:
             if self.index_file.exists() and self.metadata_path.exists():
-                # Load index
-                self.index = faiss.read_index(str(self.index_file))
+                # Load index from disk (always CPU first)
+                cpu_index = faiss.read_index(str(self.index_file))
                 logger.info(f"FAISS index loaded from {self.index_file}")
+
+                # Move to GPU if available
+                if self._gpu_res is not None:
+                    try:
+                        self.index = faiss.index_cpu_to_gpu(self._gpu_res, 0, cpu_index)
+                        logger.info("Loaded FAISS index moved to GPU")
+                    except Exception as e:
+                        logger.warning(f"GPU transfer failed: {e}; keeping on CPU")
+                        self.index = cpu_index
+                else:
+                    self.index = cpu_index
                 
                 # Load metadata
                 with open(self.metadata_path, 'rb') as f:
