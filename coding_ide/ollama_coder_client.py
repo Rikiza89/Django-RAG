@@ -39,7 +39,7 @@ class OllamaCoderClient:
 
     def generate(self, prompt: str, context: list[str] = None,
                  language: str = None, temperature: float = 0.2,
-                 max_tokens: int = 2048) -> dict:
+                 max_tokens: int = 4096) -> dict:
         """
         Generate a coding response.
 
@@ -48,7 +48,7 @@ class OllamaCoderClient:
             context:     RAG-retrieved code chunks used as reference.
             language:    Programming language hint (optional).
             temperature: Lower = more deterministic code (default 0.2).
-            max_tokens:  Max tokens to generate.
+            max_tokens:  Max tokens to generate (4096 for 14B on RTX 5050).
 
         Returns:
             dict with 'text', 'model', 'prompt_tokens', 'completion_tokens'.
@@ -63,6 +63,7 @@ class OllamaCoderClient:
             'options': {
                 'temperature': temperature,
                 'num_predict': max_tokens,
+                'num_ctx': 8192,        # 14B context window — fits in RTX 5050 8 GB VRAM
                 'top_p': 0.9,
                 'repeat_penalty': 1.1,
             },

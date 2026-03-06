@@ -95,12 +95,21 @@ python manage.py runserver
 
 ---
 
-## GPU Notes (RTX 5050 / CUDA 12.8)
+## Hardware Profile (RTX 5050 · 32 GB RAM · Ryzen 7)
 
-- **Ollama** automatically uses GPU for LLM inference (manages its own CUDA runtime)
+| Component | Value | Notes |
+|-----------|-------|-------|
+| GPU | RTX 5050 · 8 GB VRAM | Used exclusively by Ollama for LLM inference |
+| RAM | 32 GB | Allows large caches, batch size 64, 100 MB uploads |
+| CPU | Ryzen 7 | Multi-core embedding batching |
+| Coding LLM | `qwen2.5-coder:14b-instruct-q4_K_M` | ~8.5 GB VRAM · 4096 token output · 8192 ctx |
+| Document LLM | `llama3.2:3b` | Lightweight, leaves VRAM for coder |
+| Embedding model | `BAAI/bge-large-en-v1.5` | 1024 dims · ~1.3 GB · best retrieval quality |
+| FAISS | CPU-only | `faiss-gpu-cu12` has no Python 3.12+ wheels |
+
 - **Embeddings** always run on CPU (`EMBEDDING_DEVICE = 'cpu'`) — no CUDA errors
-- **FAISS** uses CPU-only (`faiss-cpu`) — `faiss-gpu-cu12` has no Python 3.12+ wheels
 - Install CUDA-enabled PyTorch from `https://download.pytorch.org/whl/cu124` for accurate GPU detection in System Status
+- **Changing the embedding model** invalidates existing FAISS indexes — re-upload your files after switching
 
 ---
 
@@ -129,4 +138,4 @@ python manage.py runserver
 | `OLLAMA_HOST` | `http://localhost:11434` | Ollama API host |
 | `OLLAMA_MODEL` | `llama3.2:3b` | Document LLM model |
 | `CODING_OLLAMA_MODEL` | `qwen2.5-coder:7b-instruct-q4_K_M` | Coding LLM model |
-| `EMBEDDING_MODEL` | `sentence-transformers/all-mpnet-base-v2` | Shared embedding model |
+| `EMBEDDING_MODEL` | `BAAI/bge-large-en-v1.5` | Shared embedding model (1024 dims, best quality) |

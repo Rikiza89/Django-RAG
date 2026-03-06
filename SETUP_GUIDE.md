@@ -98,9 +98,9 @@ python manage.py createsuperuser
 # For document Q&A
 ollama pull llama3.2:3b
 
-# For code assistant (choose based on VRAM)
-ollama pull qwen2.5-coder:7b-instruct-q4_K_M   # ~4.5 GB VRAM (recommended)
-ollama pull qwen2.5-coder:14b-instruct-q4_K_M  # ~8.5 GB VRAM (higher quality)
+# For code assistant — RTX 5050 / 8 GB VRAM
+ollama pull qwen2.5-coder:14b-instruct-q4_K_M  # ~8.5 GB VRAM (default, best quality)
+ollama pull qwen2.5-coder:7b-instruct-q4_K_M   # ~4.5 GB VRAM (fallback)
 ```
 
 ---
@@ -115,24 +115,38 @@ Visit [http://localhost:8000](http://localhost:8000)
 
 ---
 
-## VRAM Guidelines (RTX 5050 / 8 GB)
+## Hardware Configuration (RTX 5050 · 8 GB VRAM · 32 GB RAM · Ryzen 7)
 
-| Model | VRAM | Quality |
-|-------|------|---------|
-| `qwen2.5-coder:7b-instruct-q4_K_M` | ~4.5 GB | Good |
-| `qwen2.5-coder:14b-instruct-q4_K_M` | ~8.5 GB | Better (tight fit) |
-| `llama3.2:3b` | ~2 GB | Fast for documents |
-| `llama3.2:8b` | ~5 GB | Better for documents |
+### Recommended Ollama models
+
+| Model | VRAM | Role | Notes |
+|-------|------|------|-------|
+| `qwen2.5-coder:14b-instruct-q4_K_M` | ~8.5 GB | **Coding (default)** | Best quality for 8 GB VRAM |
+| `qwen2.5-coder:7b-instruct-q4_K_M` | ~4.5 GB | Coding fallback | Use if VRAM is exhausted |
+| `llama3.2:3b` | ~2 GB | Documents | Lightweight |
+| `llama3.1:8b` | ~5 GB | Documents upgrade | Better answers, more VRAM |
+
+### Embedding model
+
+| Model | Dims | Size | Quality |
+|-------|------|------|---------|
+| `BAAI/bge-large-en-v1.5` (**default**) | 1024 | ~1.3 GB | Best — suited for 32 GB RAM |
+| `sentence-transformers/all-mpnet-base-v2` | 768 | ~420 MB | Good fallback |
+
+> **Note:** Changing the embedding model after indexing documents will auto-reset the FAISS
+> indexes (detected via model-name check). You must re-upload/re-index all files.
 
 ---
 
-## GPU Setup Details
+## GPU Setup Details (RTX 5050 · 8 GB VRAM)
 
 | Component | Device | Notes |
 |-----------|--------|-------|
-| Embedding model | **CPU** | Always CPU — avoids CUDA kernel errors |
+| Embedding model | **CPU** | Always CPU — avoids CUDA kernel errors on any GPU |
 | FAISS index | **CPU** | `faiss-cpu` — no Python 3.12+ wheels for faiss-gpu |
-| Ollama LLM | **GPU** | Uses its own CUDA runtime automatically |
+| Ollama LLM | **GPU** | Uses its own CUDA runtime; 14B Q4_K_M fits in 8 GB |
+| Ollama context | 8192 tokens | Set via `num_ctx` in generate() |
+| Max output | 4096 tokens | Tuned for 14B responses |
 
 ---
 

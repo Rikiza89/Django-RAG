@@ -143,16 +143,27 @@ class CodeFAISSManager:
         if self.index is not None:
             faiss.write_index(self.index, str(self.index_file))
         with open(self.metadata_path, 'wb') as f:
-            pickle.dump({'metadata': self.metadata, 'dimension': self.dimension}, f)
+            pickle.dump({
+                'metadata': self.metadata,
+                'dimension': self.dimension,
+                'embedding_model': settings.EMBEDDING_MODEL,
+            }, f)
 
     def load_index(self):
         try:
             if self.index_file.exists() and self.metadata_path.exists():
-                self.index = faiss.read_index(str(self.index_file))
                 with open(self.metadata_path, 'rb') as f:
                     data = pickle.load(f)
-                    self.metadata  = data['metadata']
-                    self.dimension = data['dimension']
+                stored_model = data.get('embedding_model', '')
+                if stored_model and stored_model != settings.EMBEDDING_MODEL:
+                    logger.warning(
+                        f"Code FAISS index was built with '{stored_model}' but current model is "
+                        f"'{settings.EMBEDDING_MODEL}' — resetting index. Re-upload code files."
+                    )
+                    return
+                self.index = faiss.read_index(str(self.index_file))
+                self.metadata  = data['metadata']
+                self.dimension = data['dimension']
                 logger.info(f"Code FAISS index loaded ({len(self.metadata)} chunks)")
         except Exception as exc:
             logger.error(f"Could not load code FAISS index: {exc}")

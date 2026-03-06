@@ -121,13 +121,13 @@ LOGOUT_REDIRECT_URL = 'login'
 # ---------------------------------------------------------------------------
 EMBEDDING_MODEL = config(
     'EMBEDDING_MODEL',
-    # Top pick: excellent for English text + code, 768 dims, ~420 MB
-    default='sentence-transformers/all-mpnet-base-v2'
-    # Multilingual: 'intfloat/multilingual-e5-large'  (1024 dims, ~1.1 GB)
-    # Lightweight:  'intfloat/multilingual-e5-small'  (384 dims,  ~120 MB)
+    # Optimised for RTX 5050 / 32 GB RAM — 1024 dims, ~1.3 GB, best retrieval quality
+    default='BAAI/bge-large-en-v1.5'
+    # Lighter alternative: 'sentence-transformers/all-mpnet-base-v2'  (768 dims, ~420 MB)
+    # Multilingual:        'intfloat/multilingual-e5-large'           (1024 dims, ~1.1 GB)
 )
 EMBEDDING_DEVICE = 'cpu'           # Always CPU — do NOT change
-EMBEDDING_BATCH_SIZE = config('EMBEDDING_BATCH_SIZE', default=16, cast=int)
+EMBEDDING_BATCH_SIZE = config('EMBEDDING_BATCH_SIZE', default=64, cast=int)  # 32 GB RAM / Ryzen 7
 MODELS_CACHE_DIR = BASE_DIR / config('MODELS_CACHE_DIR', default='models_cache')
 
 # ---------------------------------------------------------------------------
@@ -135,17 +135,17 @@ MODELS_CACHE_DIR = BASE_DIR / config('MODELS_CACHE_DIR', default='models_cache')
 # ---------------------------------------------------------------------------
 OLLAMA_HOST    = config('OLLAMA_HOST',    default='http://localhost:11434')
 OLLAMA_MODEL   = config('OLLAMA_MODEL',   default='llama3.2:3b')
-OLLAMA_TIMEOUT = config('OLLAMA_TIMEOUT', default=120, cast=int)
+OLLAMA_TIMEOUT = config('OLLAMA_TIMEOUT', default=180, cast=int)
 
 FAISS_INDEX_PATH = BASE_DIR / config('FAISS_INDEX_PATH', default='faiss_index')
-FAISS_TOP_K      = config('FAISS_TOP_K',   default=3,   cast=int)
-CHUNK_SIZE       = config('CHUNK_SIZE',    default=500,  cast=int)
-CHUNK_OVERLAP    = config('CHUNK_OVERLAP', default=100,  cast=int)
+FAISS_TOP_K      = config('FAISS_TOP_K',   default=5,   cast=int)
+CHUNK_SIZE       = config('CHUNK_SIZE',    default=800,  cast=int)
+CHUNK_OVERLAP    = config('CHUNK_OVERLAP', default=150,  cast=int)
 
 ENABLE_QUERY_CACHE = config('ENABLE_QUERY_CACHE', default=True, cast=bool)
-QUERY_CACHE_SIZE   = config('QUERY_CACHE_SIZE',   default=50,   cast=int)
+QUERY_CACHE_SIZE   = config('QUERY_CACHE_SIZE',   default=200,  cast=int)  # 32 GB RAM
 
-MAX_UPLOAD_SIZE    = config('MAX_UPLOAD_SIZE', default=50, cast=int) * 1024 * 1024
+MAX_UPLOAD_SIZE    = config('MAX_UPLOAD_SIZE', default=100, cast=int) * 1024 * 1024  # 32 GB RAM
 ALLOWED_EXTENSIONS = config('ALLOWED_EXTENSIONS', default='.pdf,.docx,.txt,.xlsx', cast=Csv())
 
 # ---------------------------------------------------------------------------
@@ -153,18 +153,18 @@ ALLOWED_EXTENSIONS = config('ALLOWED_EXTENSIONS', default='.pdf,.docx,.txt,.xlsx
 # ---------------------------------------------------------------------------
 CODING_OLLAMA_HOST    = config('CODING_OLLAMA_HOST',    default='http://localhost:11434')
 # Recommended models (pull via `ollama pull <model>`):
-#   qwen2.5-coder:7b-instruct-q4_K_M   — best for 8 GB VRAM (recommended)
-#   qwen2.5-coder:14b-instruct-q4_K_M  — better, needs ~10 GB VRAM
-CODING_OLLAMA_MODEL   = config('CODING_OLLAMA_MODEL',   default='qwen2.5-coder:7b-instruct-q4_K_M')
-CODING_OLLAMA_TIMEOUT = config('CODING_OLLAMA_TIMEOUT', default=240, cast=int)
+#   qwen2.5-coder:14b-instruct-q4_K_M  — RTX 5050 8 GB (Q4_K_M fits ~8.5 GB, default)
+#   qwen2.5-coder:7b-instruct-q4_K_M   — fallback if VRAM is tight
+CODING_OLLAMA_MODEL   = config('CODING_OLLAMA_MODEL',   default='qwen2.5-coder:14b-instruct-q4_K_M')
+CODING_OLLAMA_TIMEOUT = config('CODING_OLLAMA_TIMEOUT', default=480, cast=int)  # 14B generation time
 
 # coding_ide reuses EMBEDDING_MODEL and MODELS_CACHE_DIR — no second download
 CODE_FAISS_INDEX_PATH   = BASE_DIR / config('CODE_FAISS_INDEX_PATH',   default='code_faiss_index')
-CODE_FAISS_TOP_K        = config('CODE_FAISS_TOP_K',        default=5,    cast=int)
-CODE_CHUNK_SIZE         = config('CODE_CHUNK_SIZE',         default=600,  cast=int)
-CODE_CHUNK_OVERLAP      = config('CODE_CHUNK_OVERLAP',      default=100,  cast=int)
+CODE_FAISS_TOP_K        = config('CODE_FAISS_TOP_K',        default=8,    cast=int)
+CODE_CHUNK_SIZE         = config('CODE_CHUNK_SIZE',         default=1000, cast=int)  # 14B handles larger context
+CODE_CHUNK_OVERLAP      = config('CODE_CHUNK_OVERLAP',      default=200,  cast=int)
 CODE_ENABLE_QUERY_CACHE = config('CODE_ENABLE_QUERY_CACHE', default=True, cast=bool)
-CODE_QUERY_CACHE_SIZE   = config('CODE_QUERY_CACHE_SIZE',   default=30,   cast=int)
+CODE_QUERY_CACHE_SIZE   = config('CODE_QUERY_CACHE_SIZE',   default=100,  cast=int)  # 32 GB RAM
 
 CODE_ALLOWED_EXTENSIONS = config(
     'CODE_ALLOWED_EXTENSIONS',
