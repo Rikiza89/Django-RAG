@@ -1,0 +1,199 @@
+{% extends 'app_core/base.html' %}
+
+{% block title %}チャット — ナレッジ管理システム{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 mb-0">
+                    <i class="bi bi-chat-dots"></i> 質問する
+                </h1>
+                <a href="{% url 'query_history' %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-clock-history"></i> 履歴
+                </a>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-body">
+                    <form id="queryForm">
+                        {% csrf_token %}
+
+                        <div class="mb-3">
+                            <label for="query" class="form-label fw-bold">質問内容</label>
+                            {{ form.query }}
+                            <div class="form-text">{{ form.query.help_text }}</div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="top_k" class="form-label">取得件数</label>
+                                {{ form.top_k }}
+                                <div class="form-text">{{ form.top_k.help_text }}</div>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="temperature" class="form-label">テンペラチャー</label>
+                                {{ form.temperature }}
+                                <div class="form-text">{{ form.temperature.help_text }}</div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary" id="submitBtn">
+                                <i class="bi bi-send"></i> 質問する
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary" onclick="clearResults()">
+                                <i class="bi bi-x-circle"></i> クリア
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- 読み込み中 -->
+            <div id="loadingIndicator" class="card mb-4" style="display: none;">
+                <div class="card-body text-center py-5">
+                    <div class="spinner-border text-primary mb-3" role="status">
+                        <span class="visually-hidden">処理中...</span>
+                    </div>
+                    <h5>質問を処理しています...</h5>
+                    <p class="text-muted mb-0">ドキュメントを検索して回答を生成しています</p>
+                </div>
+            </div>
+
+            <!-- 結果エリア -->
+            <div id="resultsArea" style="display: none;">
+                <!-- 回答カード -->
+                <div class="card mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0"><i class="bi bi-lightbulb"></i> 回答</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="answerText" class="mb-3" style="white-space: pre-wrap; line-height: 1.8;"></div>
+
+                        <div class="d-flex align-items-center text-muted small">
+                            <span id="performanceStats" class="me-3"></span>
+                            <span id="cacheIndicator"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ソースカード -->
+                <div class="card">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0"><i class="bi bi-file-earmark-text"></i> 参照ドキュメント</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="sourcesContainer"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- エラー -->
+            <div id="errorAlert" class="alert alert-danger" role="alert" style="display: none;">
+                <h5 class="alert-heading"><i class="bi bi-exclamation-triangle"></i> エラー</h5>
+                <p id="errorText" class="mb-0"></p>
+            </div>
+
+            <!-- ヒント -->
+            <div class="card mt-4">
+                <div class="card-header bg-white">
+                    <h6 class="mb-0"><i class="bi bi-info-circle"></i> より良い結果を得るためのヒント</h6>
+                </div>
+                <div class="card-body">
+                    <ul class="mb-0 small">
+                        <li>具体的な質問をする</li>
+                        <li>ドキュメントに存在する情報について質問する</li>
+                        <li>期待した回答が得られない場合は言い換えてみる</li>
+                        <li>ドキュメントに関連する専門用語を使う</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('queryForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const formData = new FormData(this);
+
+    document.getElementById('loadingIndicator').style.display = 'block';
+    document.getElementById('resultsArea').style.display = 'none';
+    document.getElementById('errorAlert').style.display = 'none';
+
+    const submitBtn = document.getElementById('submitBtn');
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>処理中...';
+
+    try {
+        const response = await fetch('{% url "query_api" %}', {
+            method: 'POST',
+            body: formData,
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            document.getElementById('answerText').textContent = data.answer;
+
+            const perfStats = `⏱️ 合計: ${data.total_time_ms}ms (検索: ${data.retrieval_time_ms}ms, 生成: ${data.inference_time_ms}ms)`;
+            document.getElementById('performanceStats').textContent = perfStats;
+
+            if (data.from_cache) {
+                document.getElementById('cacheIndicator').innerHTML = '<span class="badge bg-info"><i class="bi bi-lightning"></i> キャッシュから</span>';
+            } else {
+                document.getElementById('cacheIndicator').textContent = '';
+            }
+
+            const sourcesContainer = document.getElementById('sourcesContainer');
+            if (data.sources && data.sources.length > 0) {
+                let sourcesHtml = '<div class="list-group">';
+                data.sources.forEach((source, index) => {
+                    sourcesHtml += `
+                        <a href="/documents/${source.document_id}/" class="list-group-item list-group-item-action">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <i class="bi bi-file-earmark-text me-2"></i>
+                                    <strong>${source.document_title}</strong>
+                                </div>
+                                <span class="badge bg-primary rounded-pill">${Math.round(source.relevance_score * 100)}% 一致</span>
+                            </div>
+                        </a>
+                    `;
+                });
+                sourcesHtml += '</div>';
+                sourcesContainer.innerHTML = sourcesHtml;
+            } else {
+                sourcesContainer.innerHTML = '<p class="text-muted mb-0">ソースドキュメントが見つかりませんでした。</p>';
+            }
+
+            document.getElementById('resultsArea').style.display = 'block';
+            document.getElementById('resultsArea').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else {
+            document.getElementById('errorText').textContent = data.error || '不明なエラーが発生しました';
+            document.getElementById('errorAlert').style.display = 'block';
+        }
+    } catch (error) {
+        document.getElementById('errorText').textContent = 'ネットワークエラー: ' + error.message;
+        document.getElementById('errorAlert').style.display = 'block';
+    } finally {
+        document.getElementById('loadingIndicator').style.display = 'none';
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="bi bi-send"></i> 質問する';
+    }
+});
+
+function clearResults() {
+    document.getElementById('resultsArea').style.display = 'none';
+    document.getElementById('errorAlert').style.display = 'none';
+    document.getElementById('queryForm').reset();
+}
+</script>
+{% endblock %}

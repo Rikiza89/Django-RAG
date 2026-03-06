@@ -1,0 +1,195 @@
+{% extends 'app_core/base.html' %}
+
+{% block title %}ドキュメント — ナレッジ管理システム{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0">
+            <i class="bi bi-files"></i> ドキュメント
+        </h1>
+        {% if profile.can_upload %}
+        <a href="{% url 'document_upload' %}" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> ドキュメントのアップロード
+        </a>
+        {% endif %}
+    </div>
+
+    <!-- フィルター -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-3">
+                    {{ filter_form.search }}
+                </div>
+                <div class="col-md-2">
+                    {{ filter_form.access_level }}
+                </div>
+                <div class="col-md-2">
+                    {{ filter_form.department }}
+                </div>
+                <div class="col-md-2">
+                    {{ filter_form.file_type }}
+                </div>
+                <div class="col-md-2">
+                    {{ filter_form.processed }}
+                </div>
+                <div class="col-md-1">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-search"></i>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ドキュメント一覧 -->
+    <div class="card">
+        <div class="card-body">
+            {% if documents %}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th>タイトル</th>
+                            <th>種別</th>
+                            <th>サイズ</th>
+                            <th>アクセスレベル</th>
+                            <th>状態</th>
+                            <th>アップロード日</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for doc in documents %}
+                        <tr>
+                            <td>
+                                <a href="{% url 'document_detail' doc.pk %}" class="text-decoration-none fw-bold">
+                                    <i class="bi bi-file-earmark-{{ doc.file_type }} me-2"></i>
+                                    {{ doc.title }}
+                                </a>
+                                {% if doc.department %}
+                                <br>
+                                <small class="text-muted">
+                                    <i class="bi bi-building"></i> {{ doc.department }}
+                                </small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge bg-secondary">{{ doc.file_type|upper }}</span>
+                            </td>
+                            <td>{{ doc.file_size|filesizeformat }}</td>
+                            <td>
+                                {% if doc.access_level == 'public' %}
+                                <span class="badge bg-success">公開</span>
+                                {% elif doc.access_level == 'department' %}
+                                <span class="badge bg-info">部門</span>
+                                {% elif doc.access_level == 'manager' %}
+                                <span class="badge bg-warning">管理者</span>
+                                {% elif doc.access_level == 'private' %}
+                                <span class="badge bg-danger">非公開</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if doc.is_processed %}
+                                <span class="badge bg-success">
+                                    <i class="bi bi-check-circle"></i> 処理済み
+                                </span>
+                                <br>
+                                <small class="text-muted">{{ doc.chunk_count }} チャンク</small>
+                                {% elif doc.processing_error %}
+                                <span class="badge bg-danger">
+                                    <i class="bi bi-exclamation-circle"></i> エラー
+                                </span>
+                                {% else %}
+                                <span class="badge bg-warning">
+                                    <i class="bi bi-hourglass"></i> 待機中
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <small>{{ doc.uploaded_at|date:"Y/m/d" }}</small>
+                                <br>
+                                <small class="text-muted">by {{ doc.uploaded_by.username }}</small>
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{% url 'document_detail' doc.pk %}"
+                                       class="btn btn-outline-primary"
+                                       title="詳細">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    <a href="{% url 'document_download' doc.pk %}"
+                                       class="btn btn-outline-secondary"
+                                       title="ダウンロード">
+                                        <i class="bi bi-download"></i>
+                                    </a>
+                                    {% if user.is_superuser or profile.role == 'admin' %}
+                                    <a href="{% url 'document_reindex' doc.pk %}"
+                                       class="btn btn-outline-warning"
+                                       title="再インデックス">
+                                        <i class="bi bi-arrow-repeat"></i>
+                                    </a>
+                                    {% endif %}
+                                    {% if user.is_superuser or doc.uploaded_by == user or profile.role in 'admin,manager' %}
+                                    <a href="{% url 'document_delete' doc.pk %}"
+                                       class="btn btn-outline-danger"
+                                       title="削除">
+                                        <i class="bi bi-trash"></i>
+                                    </a>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- ページネーション -->
+            {% if documents.has_other_pages %}
+            <nav aria-label="ドキュメントのページネーション">
+                <ul class="pagination justify-content-center mb-0">
+                    {% if documents.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page=1{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}">最初</a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ documents.previous_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}">前へ</a>
+                    </li>
+                    {% endif %}
+
+                    <li class="page-item active">
+                        <span class="page-link">
+                            {{ documents.number }} / {{ documents.paginator.num_pages }} ページ
+                        </span>
+                    </li>
+
+                    {% if documents.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ documents.next_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}">次へ</a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ documents.paginator.num_pages }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}">最後</a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+
+            {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-inbox display-1 text-muted"></i>
+                <h4 class="mt-3">ドキュメントが見つかりません</h4>
+                <p class="text-muted">フィルターを変更するか、新しいドキュメントをアップロードしてください</p>
+                {% if profile.can_upload %}
+                <a href="{% url 'document_upload' %}" class="btn btn-primary mt-2">
+                    <i class="bi bi-plus-circle"></i> 最初のドキュメントをアップロード
+                </a>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

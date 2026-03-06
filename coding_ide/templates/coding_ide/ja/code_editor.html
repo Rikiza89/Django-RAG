@@ -1,0 +1,276 @@
+{% extends 'coding_ide/base_ide.html' %}
+{% block title %}コードエディタ — コーディングIDE{% endblock %}
+
+{% block extra_css %}
+<style>
+    #monaco-container {
+        width: 100%;
+        height: 520px;
+        border: 1px solid var(--ide-border);
+        border-radius: 0 0 10px 10px;
+    }
+    .editor-toolbar {
+        background: var(--ide-surface);
+        border: 1px solid var(--ide-border);
+        border-bottom: none;
+        border-radius: 10px 10px 0 0;
+        padding: 10px 14px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+    .snippet-item {
+        padding: 8px 14px;
+        border-bottom: 1px solid var(--ide-border);
+        cursor: pointer;
+        font-size: .82rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .snippet-item:hover { background: rgba(124,58,237,.08); }
+    .snippet-item.active { background: rgba(124,58,237,.18); border-left: 3px solid var(--ide-accent); }
+    .output-panel {
+        background: #0d0d1a;
+        border: 1px solid var(--ide-border);
+        border-radius: 8px;
+        padding: 12px 16px;
+        font-family: 'JetBrains Mono', 'Fira Code', monospace;
+        font-size: .82rem;
+        color: var(--ide-text);
+        min-height: 80px;
+        max-height: 200px;
+        overflow-y: auto;
+        white-space: pre-wrap;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h4 mb-0" style="color:var(--ide-text);">
+        <i class="bi bi-file-code" style="color:var(--ide-accent-light);"></i>
+        コードエディタ
+        <span style="font-size:.75rem; color:var(--ide-muted); font-weight:400; margin-left:8px;">Monaco Editor · VS Code体験</span>
+    </h1>
+    <button id="btn-new" class="btn btn-sm" style="background:rgba(124,58,237,.15); color:var(--ide-accent-light); border:1px solid rgba(124,58,237,.3);">
+        <i class="bi bi-plus-lg me-1"></i> 新規スニペット
+    </button>
+</div>
+
+<div class="row g-3">
+    <!-- スニペットリストサイドバー -->
+    <div class="col-md-3">
+        <div class="ide-card">
+            <div class="card-header"><i class="bi bi-collection me-2"></i>マイスニペット</div>
+            <div style="max-height:620px; overflow-y:auto;">
+                {% if snippets %}
+                {% for s in snippets %}
+                <div class="snippet-item {% if snippet and snippet.pk == s.pk %}active{% endif %}"
+                     data-pk="{{ s.pk }}"
+                     data-title="{{ s.title|escapejs }}"
+                     data-lang="{{ s.language }}"
+                     data-desc="{{ s.description|escapejs }}"
+                     onclick="loadSnippet(this)">
+                    <div>
+                        <div style="color:var(--ide-text); font-weight:500;">{{ s.title|truncatechars:28 }}</div>
+                        <span class="lang-badge">{{ s.get_language_display }}</span>
+                    </div>
+                    <button class="btn btn-sm p-0" style="color:var(--ide-red); opacity:.6;"
+                            onclick="deleteSnippet(event, {{ s.pk }})">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+                {% endfor %}
+                {% else %}
+                <div style="padding:20px; text-align:center; color:var(--ide-muted); font-size:.82rem;">
+                    スニペットがありません。<br>コードを書いて保存しましょう！
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- エディタエリア -->
+    <div class="col-md-9">
+        <div class="editor-toolbar">
+            <input type="text" id="snippet-title" class="form-control form-control-sm"
+                   placeholder="スニペットタイトル…"
+                   value="{{ snippet.title|default:'' }}"
+                   style="width:200px;">
+            <select id="snippet-lang" class="form-select form-select-sm" style="width:140px;"
+                    onchange="updateEditorLanguage()">
+                {% for val, label in languages %}
+                <option value="{{ val }}" {% if snippet and snippet.language == val %}selected{% elif not snippet and val == 'python' %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+            <input type="text" id="snippet-desc" class="form-control form-control-sm"
+                   placeholder="説明（任意）…"
+                   value="{{ snippet.description|default:'' }}"
+                   style="flex:1; min-width:150px;">
+            <button id="btn-save" class="btn btn-sm" onclick="saveSnippet()"
+                    style="background:var(--ide-accent); color:white; border:none;">
+                <i class="bi bi-floppy me-1"></i> 保存
+            </button>
+            <button class="btn btn-sm" onclick="sendToChat()"
+                    style="background:rgba(16,185,129,.15); color:var(--ide-green); border:1px solid rgba(16,185,129,.3);">
+                <i class="bi bi-chat-dots me-1"></i> AIに質問
+            </button>
+        </div>
+
+        <div id="monaco-container"></div>
+
+        <div class="mt-3 ide-card">
+            <div class="card-header d-flex justify-content-between">
+                <span><i class="bi bi-terminal me-2"></i>ステータス</span>
+                <span id="save-status" style="font-size:.78rem; color:var(--ide-muted);"></span>
+            </div>
+            <div class="card-body">
+                <div id="output-panel" class="output-panel">準備完了。コードを書いて保存してください。</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<input type="hidden" id="current-pk" value="{{ snippet.pk|default:'' }}">
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
+<script>
+    let editor;
+    const csrfToken = '{{ csrf_token }}';
+
+    const LANG_MAP = {
+        'python': 'python', 'javascript': 'javascript', 'typescript': 'typescript',
+        'java': 'java', 'cpp': 'cpp', 'c': 'c', 'go': 'go', 'rust': 'rust',
+        'php': 'php', 'ruby': 'ruby', 'swift': 'swift', 'kotlin': 'kotlin',
+        'csharp': 'csharp', 'html': 'html', 'css': 'css', 'sql': 'sql',
+        'shell': 'shell', 'markdown': 'markdown', 'json': 'json', 'yaml': 'yaml',
+        'other': 'plaintext',
+    };
+
+    require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs' } });
+    require(['vs/editor/editor.main'], function () {
+        const initialContent = {{ snippet.content|default:''|escapejs|safe|default:'""' }};
+        const initialLang = LANG_MAP[document.getElementById('snippet-lang').value] || 'plaintext';
+
+        editor = monaco.editor.create(document.getElementById('monaco-container'), {
+            value: initialContent,
+            language: initialLang,
+            theme: 'vs-dark',
+            fontSize: 14,
+            minimap: { enabled: true },
+            automaticLayout: true,
+            scrollBeyondLastLine: false,
+            wordWrap: 'on',
+            tabSize: 4,
+            renderLineHighlight: 'all',
+            fontFamily: "'JetBrains Mono', 'Fira Code', 'Cascadia Code', Consolas, monospace",
+        });
+
+        editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, saveSnippet);
+    });
+
+    function updateEditorLanguage() {
+        if (!editor) return;
+        const lang = LANG_MAP[document.getElementById('snippet-lang').value] || 'plaintext';
+        monaco.editor.setModelLanguage(editor.getModel(), lang);
+    }
+
+    function loadSnippet(el) {
+        document.querySelectorAll('.snippet-item').forEach(e => e.classList.remove('active'));
+        el.classList.add('active');
+
+        const pk = el.dataset.pk;
+        document.getElementById('current-pk').value = pk;
+        document.getElementById('snippet-title').value = el.dataset.title;
+        document.getElementById('snippet-lang').value = el.dataset.lang;
+        document.getElementById('snippet-desc').value = el.dataset.desc;
+
+        fetch(`/coding-ide/api/snippet/${pk}/`, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(r => r.json())
+            .then(data => {
+                if (editor && data.content !== undefined) {
+                    editor.setValue(data.content);
+                    updateEditorLanguage();
+                    setStatus(`読み込み完了: ${data.title}`);
+                }
+            }).catch(() => {});
+    }
+
+    function saveSnippet() {
+        const pk = document.getElementById('current-pk').value;
+        const title = document.getElementById('snippet-title').value.trim() || '無題';
+        const lang = document.getElementById('snippet-lang').value;
+        const desc = document.getElementById('snippet-desc').value;
+        const content = editor ? editor.getValue() : '';
+
+        setStatus('保存中…');
+
+        fetch('{% url "coding_ide:code_editor_save" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken,
+            },
+            body: JSON.stringify({ pk: pk || null, title, language: lang, description: desc, content }),
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('current-pk').value = data.pk;
+                setStatus(`保存完了: ${data.title}`);
+                setOutput(`✓ スニペットを保存しました (ID: ${data.pk})`);
+                setTimeout(() => location.href = `/coding-ide/editor/${data.pk}/`, 800);
+            } else {
+                setStatus('保存失敗');
+                setOutput(`✗ エラー: ${data.error}`);
+            }
+        })
+        .catch(e => { setStatus('保存エラー'); setOutput(`✗ ${e}`); });
+    }
+
+    function deleteSnippet(event, pk) {
+        event.stopPropagation();
+        if (!confirm('このスニペットを削除しますか？')) return;
+        fetch(`/coding-ide/editor/${pk}/delete/`, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': csrfToken },
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) location.href = '/coding-ide/editor/';
+        });
+    }
+
+    function sendToChat() {
+        const code = editor ? editor.getValue() : '';
+        const lang = document.getElementById('snippet-lang').value;
+        const title = document.getElementById('snippet-title').value;
+        const prompt = `「${title}」という${lang}コードをレビューして説明してください:\n\`\`\`${lang}\n${code}\n\`\`\``;
+        localStorage.setItem('ide_prefill_query', prompt);
+        location.href = '{% url "coding_ide:ide_chat" %}';
+    }
+
+    function newSnippet() {
+        document.getElementById('current-pk').value = '';
+        document.getElementById('snippet-title').value = '';
+        document.getElementById('snippet-desc').value = '';
+        document.querySelectorAll('.snippet-item').forEach(e => e.classList.remove('active'));
+        if (editor) editor.setValue('');
+        setStatus('新規スニペット');
+        setOutput('新しいスニペットの準備ができました。コードを書いて保存してください。');
+    }
+
+    document.getElementById('btn-new').addEventListener('click', newSnippet);
+
+    function setStatus(msg) {
+        document.getElementById('save-status').textContent = msg;
+    }
+    function setOutput(msg) {
+        document.getElementById('output-panel').textContent = msg;
+    }
+</script>
+{% endblock %}

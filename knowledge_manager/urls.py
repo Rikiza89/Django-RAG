@@ -17,12 +17,20 @@ Including another URLconf
 
 from django.contrib import admin
 from django.urls import path, include
-import django.conf.urls.i18n
+from django.shortcuts import redirect
 from django.conf import settings
 from django.conf.urls.static import static
 
+
+def set_lang(request, lang):
+    """Store UI language in session and redirect back."""
+    if lang in ('en', 'ja'):
+        request.session['ui_lang'] = lang
+    return redirect(request.META.get('HTTP_REFERER', '/'))
+
+
 urlpatterns = [
-    path('i18n/', include('django.conf.urls.i18n')),
+    path('lang/<str:lang>/', set_lang, name='set_language'),
     path('admin/', admin.site.urls),
     path('', include('app_core.urls')),
     path('coding-ide/', include('coding_ide.urls', namespace='coding_ide')),

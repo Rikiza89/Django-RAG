@@ -1,0 +1,86 @@
+{% extends 'app_core/base.html' %}
+
+{% block title %}ドキュメントの再インデックス — ナレッジ管理システム{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card border-warning">
+                <div class="card-header bg-warning">
+                    <h5 class="mb-0">
+                        <i class="bi bi-arrow-repeat"></i> 再インデックスの確認
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p class="lead">このドキュメントを再インデックスしますか？</p>
+
+                    <div class="alert alert-info">
+                        <h6 class="alert-heading">
+                            <i class="bi bi-info-circle"></i> 実行される処理:
+                        </h6>
+                        <ol class="mb-0">
+                            <li>既存のチャンクと埋め込みを削除</li>
+                            <li>ファイルからテキストを再抽出</li>
+                            <li>新しいチャンクを作成</li>
+                            <li>新しい埋め込みを生成</li>
+                            <li>ベクトルインデックスに再追加</li>
+                        </ol>
+                    </div>
+
+                    <div class="card mb-4">
+                        <div class="card-body">
+                            <h6 class="card-title">
+                                <i class="bi bi-file-earmark-{{ document.file_type }}"></i>
+                                {{ document.title }}
+                            </h6>
+                            <dl class="row mb-0 small">
+                                <dt class="col-sm-4">現在の状態:</dt>
+                                <dd class="col-sm-8">
+                                    {% if document.is_processed %}
+                                    <span class="badge bg-success">処理済み</span>
+                                    {% elif document.processing_error %}
+                                    <span class="badge bg-danger">エラー</span>
+                                    {% else %}
+                                    <span class="badge bg-warning">待機中</span>
+                                    {% endif %}
+                                </dd>
+
+                                <dt class="col-sm-4">現在のチャンク数:</dt>
+                                <dd class="col-sm-8">{{ document.chunk_count }}</dd>
+
+                                <dt class="col-sm-4">種別:</dt>
+                                <dd class="col-sm-8">{{ document.file_type|upper }}</dd>
+
+                                <dt class="col-sm-4">サイズ:</dt>
+                                <dd class="col-sm-8">{{ document.file_size|filesizeformat }}</dd>
+                            </dl>
+                        </div>
+                    </div>
+
+                    {% if document.processing_error %}
+                    <div class="alert alert-warning">
+                        <strong>前回のエラー:</strong> {{ document.processing_error }}
+                    </div>
+                    {% endif %}
+
+                    <div class="alert alert-secondary small">
+                        <i class="bi bi-clock"></i>
+                        ドキュメントのサイズによっては数秒かかる場合があります。
+                    </div>
+
+                    <form method="post" class="d-flex gap-2">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-warning">
+                            <i class="bi bi-arrow-repeat"></i> はい、再インデックスします
+                        </button>
+                        <a href="{% url 'document_detail' document.pk %}" class="btn btn-secondary">
+                            <i class="bi bi-x-circle"></i> キャンセル
+                        </a>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

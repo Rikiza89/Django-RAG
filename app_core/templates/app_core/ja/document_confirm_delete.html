@@ -1,0 +1,67 @@
+{% extends 'app_core/base.html' %}
+
+{% block title %}ドキュメントの削除 — ナレッジ管理システム{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-exclamation-triangle"></i> 削除の確認
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p class="lead">このドキュメントを削除してもよいですか？</p>
+
+                    <div class="alert alert-danger">
+                        <h6 class="alert-heading">
+                            <i class="bi bi-exclamation-triangle"></i> 警告
+                        </h6>
+                        <p class="mb-0">この操作は取り消せません。ドキュメントと関連するすべてのデータが完全に削除されます:</p>
+                        <ul class="mb-0 mt-2">
+                            <li>ドキュメントファイル</li>
+                            <li>テキストチャンク ({{ document.chunk_count }} 件)</li>
+                            <li>ベクトル埋め込み</li>
+                            <li>メタデータ</li>
+                        </ul>
+                    </div>
+
+                    <div class="card mb-4">
+                        <div class="card-body">
+                            <h6 class="card-title">
+                                <i class="bi bi-file-earmark-{{ document.file_type }}"></i>
+                                {{ document.title }}
+                            </h6>
+                            <dl class="row mb-0 small">
+                                <dt class="col-sm-4">種別:</dt>
+                                <dd class="col-sm-8">{{ document.file_type|upper }}</dd>
+
+                                <dt class="col-sm-4">サイズ:</dt>
+                                <dd class="col-sm-8">{{ document.file_size|filesizeformat }}</dd>
+
+                                <dt class="col-sm-4">アップロード日:</dt>
+                                <dd class="col-sm-8">{{ document.uploaded_at|date:"Y/m/d" }}</dd>
+
+                                <dt class="col-sm-4">アップロード者:</dt>
+                                <dd class="col-sm-8">{{ document.uploaded_by.username }}</dd>
+                            </dl>
+                        </div>
+                    </div>
+
+                    <form method="post" class="d-flex gap-2">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger">
+                            <i class="bi bi-trash"></i> はい、削除します
+                        </button>
+                        <a href="{% url 'document_detail' document.pk %}" class="btn btn-secondary">
+                            <i class="bi bi-x-circle"></i> キャンセル
+                        </a>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
