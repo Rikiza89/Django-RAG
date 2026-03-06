@@ -1,0 +1,141 @@
+{% extends 'coding_ide/base_ide.html' %}
+{% block title %}ナレッジベース — コーディングIDE{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h4 mb-0" style="color:var(--ide-text);">
+        <i class="bi bi-journal-code" style="color:var(--ide-accent-light);"></i>
+        コードナレッジベース
+    </h1>
+    <a href="{% url 'coding_ide:upload_code' %}" class="btn btn-sm"
+       style="background:var(--ide-accent); color:white; border:none;">
+        <i class="bi bi-upload me-1"></i> コードをアップロード
+    </a>
+</div>
+
+<!-- フィルター -->
+<div class="ide-card mb-4">
+    <div class="card-body py-2">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-md-4">
+                <input type="text" name="search" value="{{ current_search }}"
+                       class="form-control form-control-sm" placeholder="タイトル、説明、タグで検索…">
+            </div>
+            <div class="col-md-3">
+                <select name="language" class="form-select form-select-sm">
+                    <option value="">すべての言語</option>
+                    {% for val, label in languages %}
+                    <option value="{{ val }}" {% if val == current_language %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select name="status" class="form-select form-select-sm">
+                    <option value="">すべての状態</option>
+                    <option value="processed" {% if current_status == 'processed' %}selected{% endif %}>インデックス済み</option>
+                    <option value="failed"    {% if current_status == 'failed'    %}selected{% endif %}>エラー</option>
+                    <option value="pending"   {% if current_status == 'pending'   %}selected{% endif %}>待機中</option>
+                </select>
+            </div>
+            <div class="col-md-3 d-flex gap-2">
+                <button type="submit" class="btn btn-sm" style="background:var(--ide-accent); color:white; border:none;">
+                    <i class="bi bi-search"></i> 絞り込み
+                </button>
+                <a href="{% url 'coding_ide:knowledge_base' %}" class="btn btn-sm"
+                   style="background:rgba(255,255,255,.05); color:var(--ide-muted); border:1px solid var(--ide-border);">
+                    リセット
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ファイル一覧 -->
+{% if files %}
+<div class="ide-card">
+    <div class="card-body p-0">
+        <table class="table table-ide mb-0">
+            <thead>
+                <tr>
+                    <th>タイトル</th>
+                    <th>言語</th>
+                    <th>状態</th>
+                    <th>チャンク数</th>
+                    <th>アップロード日</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for f in files %}
+                <tr>
+                    <td>
+                        <a href="{% url 'coding_ide:code_detail' f.pk %}"
+                           style="color:var(--ide-accent-light); text-decoration:none; font-weight:500;">
+                            {{ f.title|truncatechars:45 }}
+                        </a>
+                        {% if f.description %}
+                        <div style="font-size:.72rem; color:var(--ide-muted);">{{ f.description|truncatechars:60 }}</div>
+                        {% endif %}
+                        {% if f.tags %}
+                        <div class="mt-1">
+                            {% for tag in f.tag_list %}
+                            <span style="font-size:.65rem; background:rgba(124,58,237,.1); color:var(--ide-accent-light);
+                                          padding:1px 6px; border-radius:10px; margin-right:3px;">{{ tag }}</span>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </td>
+                    <td><span class="lang-badge">{{ f.get_language_display }}</span></td>
+                    <td>
+                        {% if f.is_processed %}
+                        <span style="color:var(--ide-green); font-size:.8rem;"><i class="bi bi-check-circle"></i> インデックス済み</span>
+                        {% elif f.processing_error %}
+                        <span style="color:var(--ide-red); font-size:.8rem;" title="{{ f.processing_error }}">
+                            <i class="bi bi-exclamation-circle"></i> エラー
+                        </span>
+                        {% else %}
+                        <span style="color:var(--ide-yellow); font-size:.8rem;"><i class="bi bi-hourglass-split"></i> 待機中</span>
+                        {% endif %}
+                    </td>
+                    <td style="color:var(--ide-muted);">{{ f.chunk_count }}</td>
+                    <td style="color:var(--ide-muted); font-size:.78rem;">{{ f.uploaded_at|date:"Y/m/d" }}</td>
+                    <td>
+                        <div class="d-flex gap-1">
+                            <form method="post" action="{% url 'coding_ide:code_reindex' f.pk %}"
+                                  onsubmit="return confirm('このファイルを再インデックスしますか？');">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm"
+                                        style="background:rgba(245,158,11,.1);color:var(--ide-yellow);border:none;font-size:.72rem;">
+                                    <i class="bi bi-arrow-clockwise"></i>
+                                </button>
+                            </form>
+                            <form method="post" action="{% url 'coding_ide:code_delete' f.pk %}"
+                                  onsubmit="return confirm('「{{ f.title }}」を削除しますか？この操作は取り消せません。');">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm"
+                                        style="background:rgba(239,68,68,.1);color:var(--ide-red);border:none;font-size:.72rem;">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="ide-card">
+    <div class="card-body text-center py-5" style="color:var(--ide-muted);">
+        <i class="bi bi-inbox fs-1 mb-3 d-block" style="color:var(--ide-border);"></i>
+        <h5 style="color:var(--ide-text);">コードファイルが見つかりません</h5>
+        <p>ソースコードファイルをアップロードして、コーディングナレッジベースを構築しましょう。</p>
+        <a href="{% url 'coding_ide:upload_code' %}" class="btn"
+           style="background:var(--ide-accent); color:white; border:none;">
+            <i class="bi bi-upload me-1"></i> 最初のファイルをアップロード
+        </a>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

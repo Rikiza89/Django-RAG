@@ -1,0 +1,273 @@
+{% extends 'app_core/base.html' %}
+
+{% block title %}システム状態 — ナレッジ管理システム{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0">
+            <i class="bi bi-gear"></i> システム状態
+        </h1>
+        <button class="btn btn-outline-danger" onclick="clearCache()">
+            <i class="bi bi-trash"></i> クエリキャッシュをクリア
+        </button>
+    </div>
+
+    <!-- Ollama状態 -->
+    <div class="card mb-4">
+        <div class="card-header bg-white">
+            <h5 class="mb-0"><i class="bi bi-robot"></i> Ollama LLM 状態</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-4">接続:</dt>
+                        <dd class="col-sm-8">
+                            {% if status.ollama.connected %}
+                            <span class="badge bg-success"><i class="bi bi-check-circle"></i> 接続済み</span>
+                            {% else %}
+                            <span class="badge bg-danger"><i class="bi bi-x-circle"></i> 切断</span>
+                            {% endif %}
+                        </dd>
+
+                        <dt class="col-sm-4">モデル:</dt>
+                        <dd class="col-sm-8">
+                            {{ status.ollama.model_name }}
+                            {% if status.ollama.model_available %}
+                            <span class="badge bg-success ms-2">利用可能</span>
+                            {% else %}
+                            <span class="badge bg-warning ms-2">利用不可</span>
+                            {% endif %}
+                        </dd>
+
+                        <dt class="col-sm-4">ホスト:</dt>
+                        <dd class="col-sm-8"><code>{{ status.ollama.host }}</code></dd>
+                    </dl>
+                </div>
+                <div class="col-md-6">
+                    {% if not status.ollama.connected %}
+                    <div class="alert alert-warning mb-0">
+                        <h6 class="alert-heading">Ollamaが起動していません</h6>
+                        <p class="mb-2">クエリ機能を使うにはOllamaを起動してください:</p>
+                        <code>ollama serve</code>
+                    </div>
+                    {% elif not status.ollama.model_available %}
+                    <div class="alert alert-warning mb-0">
+                        <h6 class="alert-heading">モデルが利用できません</h6>
+                        <p class="mb-2">モデルをプルしてください:</p>
+                        <code>ollama pull {{ status.ollama.model_name }}</code>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-success mb-0">
+                        <i class="bi bi-check-circle"></i>
+                        <strong>準備完了！</strong> クエリシステムが正常に動作しています。
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 埋め込みモデル状態 -->
+    <div class="card mb-4">
+        <div class="card-header bg-white">
+            <h5 class="mb-0"><i class="bi bi-cpu"></i> 埋め込みモデル状態</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-4">モデル:</dt>
+                        <dd class="col-sm-8"><code>{{ status.embedding_model.model_name }}</code></dd>
+
+                        <dt class="col-sm-4">キャッシュ状態:</dt>
+                        <dd class="col-sm-8">
+                            {% if status.embedding_model.is_cached %}
+                            <span class="badge bg-success"><i class="bi bi-check-circle"></i> キャッシュ済み</span>
+                            {% else %}
+                            <span class="badge bg-warning"><i class="bi bi-exclamation-triangle"></i> 未キャッシュ</span>
+                            {% endif %}
+                        </dd>
+
+                        <dt class="col-sm-4">キャッシュサイズ:</dt>
+                        <dd class="col-sm-8">{{ status.embedding_model.cache_size_mb }} MB</dd>
+
+                        <dt class="col-sm-4">キャッシュパス:</dt>
+                        <dd class="col-sm-8"><small><code>{{ status.embedding_model.cache_path }}</code></small></dd>
+
+                        <dt class="col-sm-4">デバイス:</dt>
+                        <dd class="col-sm-8"><span class="badge bg-secondary">{{ status.embedding_model.device|upper }}</span></dd>
+
+                        <dt class="col-sm-4">メモリ上にロード済み:</dt>
+                        <dd class="col-sm-8">
+                            {% if status.embedding_model.model_loaded %}
+                            <span class="badge bg-success">はい</span>
+                            {% else %}
+                            <span class="badge bg-secondary">いいえ</span>
+                            {% endif %}
+                        </dd>
+                    </dl>
+                </div>
+                <div class="col-md-6">
+                    {% if not status.embedding_model.is_cached %}
+                    <div class="alert alert-warning mb-0">
+                        <h6 class="alert-heading">モデル未キャッシュ</h6>
+                        <p class="mb-2">埋め込みモデルをダウンロードする必要があります（インターネット接続が必要）:</p>
+                        <pre class="mb-0"><code>python manage.py shell
+from app_core.cache_manager import embedding_cache
+embedding_cache.get_model()</code></pre>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-success mb-0">
+                        <i class="bi bi-check-circle"></i>
+                        <strong>準備完了！</strong> モデルはキャッシュ済みで、オフライン使用が可能です。
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- FAISSインデックス状態 -->
+    <div class="card mb-4">
+        <div class="card-header bg-white">
+            <h5 class="mb-0"><i class="bi bi-database"></i> FAISSベクトルインデックス</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="text-center p-3">
+                        <h2 class="text-primary">{{ status.faiss_index.total_chunks }}</h2>
+                        <div class="text-muted">総チャンク数</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="text-center p-3">
+                        <h2 class="text-success">{{ status.faiss_index.dimension }}</h2>
+                        <div class="text-muted">次元数</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="text-center p-3">
+                        <h2 class="text-info">{{ status.faiss_index.index_file_size_mb }}</h2>
+                        <div class="text-muted">インデックスサイズ (MB)</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="text-center p-3">
+                        <h2 class="text-warning">{{ status.faiss_index.metadata_file_size_mb }}</h2>
+                        <div class="text-muted">メタデータサイズ (MB)</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- データベース統計 -->
+    <div class="card mb-4">
+        <div class="card-header bg-white">
+            <h5 class="mb-0"><i class="bi bi-bar-chart"></i> データベース統計</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="text-center p-3 border rounded">
+                        <i class="bi bi-files display-4 text-primary"></i>
+                        <h3 class="mt-2">{{ status.database.total_documents }}</h3>
+                        <div class="text-muted">ドキュメント</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="text-center p-3 border rounded">
+                        <i class="bi bi-boxes display-4 text-success"></i>
+                        <h3 class="mt-2">{{ status.database.total_chunks }}</h3>
+                        <div class="text-muted">チャンク</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="text-center p-3 border rounded">
+                        <i class="bi bi-people display-4 text-info"></i>
+                        <h3 class="mt-2">{{ status.database.total_users }}</h3>
+                        <div class="text-muted">ユーザー</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="text-center p-3 border rounded">
+                        <i class="bi bi-chat-dots display-4 text-warning"></i>
+                        <h3 class="mt-2">{{ status.database.total_queries }}</h3>
+                        <div class="text-muted">クエリ数</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- クエリキャッシュ -->
+    <div class="card">
+        <div class="card-header bg-white">
+            <h5 class="mb-0"><i class="bi bi-lightning"></i> クエリキャッシュ</h5>
+        </div>
+        <div class="card-body">
+            <dl class="row mb-0">
+                <dt class="col-sm-2">状態:</dt>
+                <dd class="col-sm-10">
+                    {% if status.query_cache.enabled %}
+                    <span class="badge bg-success">有効</span>
+                    {% else %}
+                    <span class="badge bg-secondary">無効</span>
+                    {% endif %}
+                </dd>
+
+                <dt class="col-sm-2">現在のサイズ:</dt>
+                <dd class="col-sm-10">{{ status.query_cache.size }} / {{ status.query_cache.max_size }} 件のキャッシュ</dd>
+
+                <dt class="col-sm-2">使用率:</dt>
+                <dd class="col-sm-10">
+                    <div class="progress" style="height: 25px;">
+                        <div class="progress-bar"
+                             role="progressbar"
+                             style="width: {% widthratio status.query_cache.size status.query_cache.max_size 100 %}%"
+                             aria-valuenow="{{ status.query_cache.size }}"
+                             aria-valuemin="0"
+                             aria-valuemax="{{ status.query_cache.max_size }}">
+                            {% widthratio status.query_cache.size status.query_cache.max_size 100 %}%
+                        </div>
+                    </div>
+                </dd>
+            </dl>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function clearCache() {
+    if (!confirm('クエリキャッシュをクリアしてもよいですか？')) {
+        return;
+    }
+
+    try {
+        const response = await fetch('{% url "clear_cache" %}', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            alert('キャッシュをクリアしました！');
+            location.reload();
+        } else {
+            alert('エラー: ' + data.error);
+        }
+    } catch (error) {
+        alert('ネットワークエラー: ' + error.message);
+    }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,158 @@
+{% extends 'coding_ide/base_ide.html' %}
+{% block title %}システム状態 — コーディングIDE{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h4 mb-0" style="color:var(--ide-text);">
+        <i class="bi bi-cpu" style="color:var(--ide-accent-light);"></i>
+        システム状態
+    </h1>
+    <button onclick="location.reload()" class="btn btn-sm"
+            style="background:rgba(124,58,237,.15); color:var(--ide-accent-light); border:1px solid rgba(124,58,237,.3);">
+        <i class="bi bi-arrow-clockwise"></i> 更新
+    </button>
+</div>
+
+<div class="row g-3">
+    <!-- LLM -->
+    <div class="col-md-6">
+        <div class="ide-card">
+            <div class="card-header"><i class="bi bi-cpu me-2"></i>LLM (Qwen 2.5 Coder)</div>
+            <div class="card-body">
+                <div class="d-flex align-items-center gap-3 mb-2">
+                    {% if status.llm.connected %}
+                    <span style="color:var(--ide-green); font-size:1.3rem;"><i class="bi bi-circle-fill"></i></span>
+                    <div>
+                        <div style="font-weight:600; color:var(--ide-text);">Ollama 接続済み</div>
+                        <div style="font-size:.8rem; color:var(--ide-muted);">{{ status.llm.model_name }}</div>
+                    </div>
+                    {% else %}
+                    <span style="color:var(--ide-red); font-size:1.3rem;"><i class="bi bi-circle-fill"></i></span>
+                    <div style="color:var(--ide-text);">Ollama 未接続</div>
+                    {% endif %}
+                </div>
+                {% if status.llm.connected %}
+                <div style="font-size:.8rem; color:var(--ide-muted);">
+                    モデル利用可能:
+                    {% if status.llm.model_available %}
+                    <span style="color:var(--ide-green);">はい</span>
+                    {% else %}
+                    <span style="color:var(--ide-yellow);">
+                        いいえ — 実行: <code>ollama pull {{ status.llm.model_name }}</code>
+                    </span>
+                    {% endif %}
+                </div>
+                {% else %}
+                <div style="font-size:.8rem; color:var(--ide-muted);">
+                    Ollama起動: <code>ollama serve</code>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- 埋め込みモデル -->
+    <div class="col-md-6">
+        <div class="ide-card">
+            <div class="card-header"><i class="bi bi-box-seam me-2"></i>埋め込みモデル</div>
+            <div class="card-body" style="font-size:.85rem;">
+                <dl class="row mb-0">
+                    <dt class="col-5" style="color:var(--ide-muted);">モデル</dt>
+                    <dd class="col-7" style="color:var(--ide-text);">{{ status.embedding_model.model_name }}</dd>
+                    <dt class="col-5" style="color:var(--ide-muted);">キャッシュ状態</dt>
+                    <dd class="col-7">
+                        {% if status.embedding_model.is_cached %}
+                        <span style="color:var(--ide-green);">キャッシュ済み ({{ status.embedding_model.cache_size_mb }} MB)</span>
+                        {% else %}
+                        <span style="color:var(--ide-yellow);">未ダウンロード</span>
+                        {% endif %}
+                    </dd>
+                    <dt class="col-5" style="color:var(--ide-muted);">デバイス</dt>
+                    <dd class="col-7" style="color:var(--ide-text);">{{ status.embedding_model.device|upper }}</dd>
+                    <dt class="col-5" style="color:var(--ide-muted);">メモリ上にロード</dt>
+                    <dd class="col-7">
+                        {% if status.embedding_model.model_loaded %}
+                        <span style="color:var(--ide-green);">ロード済み</span>
+                        {% else %}
+                        <span style="color:var(--ide-muted);">未ロード</span>
+                        {% endif %}
+                    </dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+
+    <!-- FAISS -->
+    <div class="col-md-6">
+        <div class="ide-card">
+            <div class="card-header"><i class="bi bi-database me-2"></i>コードFAISSインデックス</div>
+            <div class="card-body" style="font-size:.85rem;">
+                <dl class="row mb-0">
+                    <dt class="col-5" style="color:var(--ide-muted);">総チャンク数</dt>
+                    <dd class="col-7" style="color:var(--ide-text);">{{ status.faiss_index.total_chunks }}</dd>
+                    <dt class="col-5" style="color:var(--ide-muted);">インデックスサイズ</dt>
+                    <dd class="col-7" style="color:var(--ide-text);">{{ status.faiss_index.index_size }}</dd>
+                    <dt class="col-5" style="color:var(--ide-muted);">次元数</dt>
+                    <dd class="col-7" style="color:var(--ide-text);">{{ status.faiss_index.dimension }}</dd>
+                    <dt class="col-5" style="color:var(--ide-muted);">GPU有効</dt>
+                    <dd class="col-7">
+                        {% if status.faiss_index.gpu_enabled %}
+                        <span style="color:var(--ide-green);">はい</span>
+                        {% else %}
+                        <span style="color:var(--ide-muted);">いいえ (CPU)</span>
+                        {% endif %}
+                    </dd>
+                    <dt class="col-5" style="color:var(--ide-muted);">ファイルサイズ</dt>
+                    <dd class="col-7" style="color:var(--ide-text);">{{ status.faiss_index.index_file_size_mb }} MB</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+
+    <!-- コードファイル -->
+    <div class="col-md-6">
+        <div class="ide-card">
+            <div class="card-header"><i class="bi bi-files me-2"></i>ナレッジベース</div>
+            <div class="card-body" style="font-size:.85rem;">
+                <dl class="row mb-0">
+                    <dt class="col-5" style="color:var(--ide-muted);">総ファイル数</dt>
+                    <dd class="col-7" style="color:var(--ide-text);">{{ status.code_files.total }}</dd>
+                    <dt class="col-5" style="color:var(--ide-muted);">インデックス済み</dt>
+                    <dd class="col-7" style="color:var(--ide-green);">{{ status.code_files.processed }}</dd>
+                    <dt class="col-5" style="color:var(--ide-muted);">エラー</dt>
+                    <dd class="col-7" style="color:var(--ide-red);">{{ status.code_files.failed }}</dd>
+                    <dt class="col-5" style="color:var(--ide-muted);">クエリキャッシュ</dt>
+                    <dd class="col-7" style="color:var(--ide-text);">
+                        {% if status.query_cache.enabled %}
+                        {{ status.query_cache.size }}/{{ status.query_cache.max_size }}
+                        {% else %}
+                        無効
+                        {% endif %}
+                    </dd>
+                </dl>
+                <form method="post" action="{% url 'coding_ide:api_clear_cache' %}" class="mt-3">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-sm"
+                            style="background:rgba(239,68,68,.1); color:var(--ide-red); border:1px solid rgba(239,68,68,.3); font-size:.78rem;">
+                        <i class="bi bi-trash me-1"></i> クエリキャッシュをクリア
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- セットアップガイド -->
+<div class="ide-card mt-3">
+    <div class="card-header"><i class="bi bi-book me-2"></i>クイックセットアップガイド</div>
+    <div class="card-body" style="font-size:.82rem; color:var(--ide-muted);">
+        <ol class="mb-0">
+            <li class="mb-1">Ollamaをインストール: <a href="https://ollama.ai" target="_blank" style="color:var(--ide-accent-light);">ollama.ai</a></li>
+            <li class="mb-1">モデルをプル: <code>ollama pull qwen2.5-coder:7b</code></li>
+            <li class="mb-1">GPUサポートのインストール: <code>pip install faiss-gpu-cu12</code> (CUDA 12.x) または <code>faiss-gpu</code> (CUDA 11.x)</li>
+            <li class="mb-1"><a href="{% url 'coding_ide:knowledge_base' %}" style="color:var(--ide-accent-light);">ナレッジベース</a>にコードファイルをアップロード</li>
+            <li><a href="{% url 'coding_ide:ide_chat' %}" style="color:var(--ide-accent-light);">コードアシスタント</a>で質問を開始</li>
+        </ol>
+    </div>
+</div>
+{% endblock %}

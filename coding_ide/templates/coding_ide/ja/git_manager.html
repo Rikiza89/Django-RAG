@@ -1,0 +1,352 @@
+{% extends 'coding_ide/base_ide.html' %}
+{% block title %}Gitマネージャー — コーディングIDE{% endblock %}
+
+{% block extra_css %}
+<style>
+    .git-output {
+        background: #0d0d1a;
+        border: 1px solid var(--ide-border);
+        border-radius: 8px;
+        padding: 12px 16px;
+        font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+        font-size: .8rem;
+        color: var(--ide-green);
+        min-height: 60px;
+        max-height: 260px;
+        overflow-y: auto;
+        white-space: pre-wrap;
+    }
+    .git-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 14px;
+        border-radius: 6px;
+        font-size: .82rem;
+        border: 1px solid;
+        cursor: pointer;
+        transition: opacity .15s;
+    }
+    .git-btn:hover { opacity: .8; }
+    .git-btn-primary { background: rgba(124,58,237,.2); color: var(--ide-accent-light); border-color: rgba(124,58,237,.4); }
+    .git-btn-green   { background: rgba(16,185,129,.15); color: var(--ide-green);        border-color: rgba(16,185,129,.35); }
+    .git-btn-yellow  { background: rgba(245,158,11,.15); color: var(--ide-yellow);       border-color: rgba(245,158,11,.35); }
+    .git-btn-red     { background: rgba(239,68,68,.15);  color: var(--ide-red);          border-color: rgba(239,68,68,.35); }
+    .git-btn-blue    { background: rgba(59,130,246,.15); color: #93c5fd;                 border-color: rgba(59,130,246,.35); }
+    .repo-card { cursor: pointer; transition: border-color .15s; }
+    .repo-card.selected { border-color: var(--ide-accent) !important; }
+    .branch-badge {
+        font-size: .72rem; padding: 2px 10px; border-radius: 20px;
+        background: rgba(16,185,129,.15); color: var(--ide-green);
+        border: 1px solid rgba(16,185,129,.3); font-weight: 600;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h4 mb-0" style="color:var(--ide-text);">
+        <i class="bi bi-git" style="color:var(--ide-accent-light);"></i>
+        Gitマネージャー
+    </h1>
+    <button class="btn btn-sm git-btn-primary git-btn" data-bs-toggle="modal" data-bs-target="#addRepoModal">
+        <i class="bi bi-plus-lg"></i> リポジトリを追加
+    </button>
+</div>
+
+{% if not repos %}
+<div class="ide-card">
+    <div class="card-body text-center py-5" style="color:var(--ide-muted);">
+        <i class="bi bi-git fs-1 mb-3 d-block" style="color:var(--ide-border);"></i>
+        <h5 style="color:var(--ide-text);">リポジトリが登録されていません</h5>
+        <p>ローカルリポジトリのパスを追加してGitを管理します。</p>
+        <button class="btn git-btn git-btn-primary" data-bs-toggle="modal" data-bs-target="#addRepoModal">
+            <i class="bi bi-plus-lg"></i> リポジトリを追加
+        </button>
+    </div>
+</div>
+{% else %}
+
+<div class="row g-3 mb-4">
+    {% for repo in repos %}
+    <div class="col-md-4">
+        <div class="ide-card repo-card {% if forloop.first %}selected{% endif %}"
+             id="repo-card-{{ repo.pk }}"
+             onclick="selectRepo({{ repo.pk }}, '{{ repo.name|escapejs }}', '{{ repo.path|escapejs }}', '{{ repo.current_branch|escapejs }}')">
+            <div class="card-body" style="padding:14px;">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div style="font-weight:600; color:var(--ide-text);">{{ repo.name }}</div>
+                        <div style="font-size:.72rem; color:var(--ide-muted); margin-top:2px;">{{ repo.path }}</div>
+                    </div>
+                    <button class="btn p-0" style="color:var(--ide-red); opacity:.7;"
+                            onclick="removeRepo(event, {{ repo.pk }})">
+                        <i class="bi bi-x-circle"></i>
+                    </button>
+                </div>
+                <div class="mt-2">
+                    {% if repo.is_initialized %}
+                    <span class="branch-badge"><i class="bi bi-diagram-2 me-1"></i>{{ repo.current_branch }}</span>
+                    {% else %}
+                    <span style="font-size:.72rem; color:var(--ide-yellow);">未初期化</span>
+                    {% endif %}
+                    {% if repo.remote_url %}
+                    <div style="font-size:.68rem; color:var(--ide-muted); margin-top:4px;">
+                        <i class="bi bi-cloud me-1"></i>{{ repo.remote_url|truncatechars:40 }}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Git操作パネル -->
+<div class="row g-3" id="git-panel">
+    <div class="col-md-8">
+        <div class="ide-card mb-3">
+            <div class="card-header">
+                <i class="bi bi-terminal me-2"></i>
+                Git操作 —
+                <span id="active-repo-name" style="color:var(--ide-accent-light);">{{ repos.0.name }}</span>
+                <span class="branch-badge ms-2" id="active-branch">{{ repos.0.current_branch }}</span>
+            </div>
+            <div class="card-body">
+                <div class="d-flex flex-wrap gap-2 mb-3">
+                    <button class="git-btn git-btn-primary" onclick="gitAction('status')">
+                        <i class="bi bi-info-circle"></i> 状態
+                    </button>
+                    <button class="git-btn git-btn-green" onclick="gitAction('init')">
+                        <i class="bi bi-plus-square"></i> 初期化
+                    </button>
+                    <button class="git-btn git-btn-yellow" onclick="promptAdd()">
+                        <i class="bi bi-plus-circle"></i> 追加
+                    </button>
+                    <button class="git-btn git-btn-green" onclick="promptCommit()">
+                        <i class="bi bi-check-circle"></i> コミット
+                    </button>
+                    <button class="git-btn git-btn-primary" onclick="promptBranch()">
+                        <i class="bi bi-diagram-2"></i> 新規ブランチ
+                    </button>
+                    <button class="git-btn git-btn-primary" onclick="promptCheckout()">
+                        <i class="bi bi-arrow-left-right"></i> チェックアウト
+                    </button>
+                    <button class="git-btn git-btn-blue" onclick="promptPull()">
+                        <i class="bi bi-cloud-download"></i> プル
+                    </button>
+                    <button class="git-btn git-btn-blue" onclick="promptPush()">
+                        <i class="bi bi-cloud-upload"></i> プッシュ
+                    </button>
+                </div>
+
+                <div id="git-input-row" class="d-none mb-3">
+                    <div class="d-flex gap-2">
+                        <input id="git-input" type="text" class="form-control form-control-sm"
+                               placeholder="値を入力…" style="max-width:400px;">
+                        <button class="btn btn-sm git-btn-green git-btn" onclick="confirmAction()">
+                            <i class="bi bi-check-lg"></i> <span id="confirm-label">OK</span>
+                        </button>
+                        <button class="btn btn-sm git-btn-red git-btn" onclick="cancelInput()">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+                    <div id="git-input-hint" style="font-size:.75rem; color:var(--ide-muted); margin-top:4px;"></div>
+                </div>
+
+                <div class="git-output" id="git-output">上のボタンで操作を選択してください…</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ログパネル -->
+    <div class="col-md-4">
+        <div class="ide-card">
+            <div class="card-header"><i class="bi bi-clock-history me-2"></i>最近のコミット</div>
+            <div class="git-output" id="git-log" style="border:none; border-radius:0 0 10px 10px; color:var(--ide-muted);">
+                「状態」をクリックしてログを読み込む。
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endif %}
+
+<!-- リポジトリ追加モーダル -->
+<div class="modal fade" id="addRepoModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content" style="background:var(--ide-surface); border:1px solid var(--ide-border);">
+            <div class="modal-header" style="border-color:var(--ide-border);">
+                <h5 class="modal-title" style="color:var(--ide-text);">リポジトリを追加</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{% url 'coding_ide:git_add_repo' %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label" style="color:var(--ide-muted); font-size:.85rem;">リポジトリ名</label>
+                        <input type="text" name="name" class="form-control"
+                               placeholder="例: マイDjangoプロジェクト">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" style="color:var(--ide-muted); font-size:.85rem;">
+                            絶対パス <span style="color:var(--ide-red);">*</span>
+                        </label>
+                        <input type="text" name="path" class="form-control" required
+                               placeholder="/home/user/my-project">
+                        <div style="font-size:.75rem; color:var(--ide-muted); margin-top:4px;">
+                            サーバー上のディレクトリの絶対パス。存在するパスを指定してください。
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer" style="border-color:var(--ide-border);">
+                    <button type="button" class="btn btn-sm git-btn-red git-btn" data-bs-dismiss="modal">キャンセル</button>
+                    <button type="submit" class="btn btn-sm git-btn-green git-btn">
+                        <i class="bi bi-plus-lg"></i> 追加
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let activeRepoPk = {{ repos.0.pk|default:'null' }};
+    const csrfToken = '{{ csrf_token }}';
+    let pendingAction = null;
+
+    function selectRepo(pk, name, path, branch) {
+        activeRepoPk = pk;
+        document.querySelectorAll('.repo-card').forEach(c => c.classList.remove('selected'));
+        document.getElementById(`repo-card-${pk}`).classList.add('selected');
+        document.getElementById('active-repo-name').textContent = name;
+        document.getElementById('active-branch').textContent = branch;
+        setOutput(`切り替え完了: ${name} (${path})`);
+        cancelInput();
+    }
+
+    function removeRepo(event, pk) {
+        event.stopPropagation();
+        if (!confirm('このリポジトリをリストから削除しますか？（ファイルは削除されません）')) return;
+        fetch(`/coding-ide/git/${pk}/remove/`, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': csrfToken },
+        }).then(r => r.json()).then(d => { if (d.success) location.reload(); });
+    }
+
+    function gitAction(action, payload = {}) {
+        if (!activeRepoPk) { setOutput('リポジトリが選択されていません。'); return; }
+        const url = `/coding-ide/api/git/${activeRepoPk}/${action}/`;
+        const isGet = action === 'status';
+
+        setOutput('実行中…');
+        const opts = {
+            method: isGet ? 'GET' : 'POST',
+            headers: { 'X-CSRFToken': csrfToken, 'Content-Type': 'application/json' },
+        };
+        if (!isGet && Object.keys(payload).length) opts.body = JSON.stringify(payload);
+
+        fetch(url, opts)
+            .then(r => r.json())
+            .then(data => {
+                const out = data.output || data.status || '(出力なし)';
+                const prefix = data.ok ? '✓ ' : '✗ ';
+                setOutput(prefix + out);
+                if (data.log) document.getElementById('git-log').textContent = data.log;
+                if (data.branch) document.getElementById('active-branch').textContent = data.branch;
+                if (action === 'status') {
+                    document.getElementById('git-log').textContent = data.log || '(コミットなし)';
+                }
+            })
+            .catch(e => setOutput(`✗ ネットワークエラー: ${e}`));
+    }
+
+    function promptAdd() {
+        showInput('ステージするファイル（空白で "." ）', '. (すべてのファイル)', 'add', 'ステージ');
+    }
+    function promptCommit() {
+        showInput('コミットメッセージ', 'feat: 変更内容を説明', 'commit', 'コミット');
+    }
+    function promptBranch() {
+        showInput('新しいブランチ名', 'feature/my-feature', 'branch', '作成');
+    }
+    function promptCheckout() {
+        showInput('チェックアウトするブランチ（"+"で新規作成）', 'main または +new-branch', 'checkout', 'チェックアウト');
+    }
+    function promptPull() {
+        showInput('リモートとブランチ（スペース区切り）', 'origin main', 'pull', 'プル');
+    }
+    function promptPush() {
+        showInput('リモートとブランチ（スペース区切り）', 'origin main', 'push', 'プッシュ');
+    }
+
+    function showInput(hint, placeholder, action, label) {
+        pendingAction = action;
+        const row = document.getElementById('git-input-row');
+        const input = document.getElementById('git-input');
+        row.classList.remove('d-none');
+        document.getElementById('git-input-hint').textContent = hint;
+        document.getElementById('confirm-label').textContent = label;
+        input.placeholder = placeholder;
+        input.value = '';
+        input.focus();
+    }
+
+    function cancelInput() {
+        pendingAction = null;
+        document.getElementById('git-input-row').classList.add('d-none');
+        document.getElementById('git-input').value = '';
+    }
+
+    function confirmAction() {
+        const val = document.getElementById('git-input').value.trim();
+        cancelInput();
+        switch (pendingAction) {
+            case 'add':
+                gitAction('add', { files: val || '.' });
+                break;
+            case 'commit':
+                if (!val) { setOutput('✗ コミットメッセージが必要です。'); return; }
+                gitAction('commit', { message: val });
+                break;
+            case 'branch':
+                if (!val) { setOutput('✗ ブランチ名が必要です。'); return; }
+                gitAction('branch', { branch: val });
+                break;
+            case 'checkout': {
+                const create = val.startsWith('+');
+                const branch = create ? val.slice(1).trim() : val;
+                gitAction('checkout', { branch, create });
+                break;
+            }
+            case 'pull': {
+                const [remote, branch] = (val || 'origin main').split(/\s+/);
+                gitAction('pull', { remote: remote || 'origin', branch: branch || 'main' });
+                break;
+            }
+            case 'push': {
+                const [remote, branch] = (val || 'origin main').split(/\s+/);
+                gitAction('push', { remote: remote || 'origin', branch: branch || 'main' });
+                break;
+            }
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const input = document.getElementById('git-input');
+        if (input) {
+            input.addEventListener('keydown', e => {
+                if (e.key === 'Enter') confirmAction();
+                if (e.key === 'Escape') cancelInput();
+            });
+        }
+        if (activeRepoPk) setTimeout(() => gitAction('status'), 400);
+    });
+
+    function setOutput(msg) {
+        document.getElementById('git-output').textContent = msg;
+    }
+</script>
+{% endblock %}

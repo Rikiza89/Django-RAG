@@ -126,7 +126,12 @@ class EmbeddingModelCache:
 
         snap = base / 'snapshots'
         if snap.exists():
-            snaps = sorted(snap.glob('*'), key=os.path.getmtime, reverse=True)
+            # Filter to directories only — avoids temp/lock files left by HuggingFace Hub
+            snaps = sorted(
+                [s for s in snap.iterdir() if s.is_dir()],
+                key=os.path.getmtime,
+                reverse=True,
+            )
             if snaps:
                 return snaps[0]
 
@@ -136,11 +141,58 @@ class EmbeddingModelCache:
         return base
 
     def _is_cached(self, path: Path) -> bool:
+        """
+        Return True when a usable weight file is present under *path*.
+
+        Handles three layouts that appear in practice:
+          1. Weights at the snapshot root   (standard HF Hub / bge-m3)
+          2. Weights in a sub-module dir    (multi-module SentenceTransformer,
+                                             e.g. 0_Transformer/model.safetensors)
+          3. Windows degraded-cache mode    (HF Hub copies to blobs/ but leaves
+                                             broken symlinks in snapshots/ —
+                                             resolved via os.path.realpath)
+        """
         if not path.exists():
             return False
-        has_weights = any((path / f).exists()
-                          for f in ['pytorch_model.bin', 'model.safetensors'])
-        return has_weights and (path / 'config.json').exists()
+
+        weight_files = ('pytorch_model.bin', 'model.safetensors')
+        config_files = ('config.json', 'config_sentence_transformers.json',
+                        'sentence_bert_config.json')
+
+        def _file_exists(p: Path) -> bool:
+            """True even when p is a symlink whose target exists."""
+            try:
+                return p.is_file() or os.path.isfile(os.path.realpath(p))
+            except OSError:
+                return False
+
+        # 1. Root-level weights
+        has_weights = any(_file_exists(path / f) for f in weight_files)
+
+        # 2. Sub-module weights (e.g. 0_Transformer/)
+        if not has_weights:
+            try:
+                has_weights = any(
+                    _file_exists(sub / f)
+                    for sub in path.iterdir() if sub.is_dir()
+                    for f in weight_files
+                )
+            except OSError:
+                pass
+
+        # 3. Blobs fallback — HF Hub stores real files in blobs/ with hash names;
+        #    when snapshots contain only broken symlinks the blob dir itself proves
+        #    the model was downloaded.
+        if not has_weights:
+            blobs_dir = path.parent.parent / 'blobs'
+            if blobs_dir.is_dir():
+                blob_total = sum(
+                    f.stat().st_size for f in blobs_dir.iterdir() if f.is_file()
+                )
+                has_weights = blob_total > 100 * 1024 * 1024  # > 100 MB ⇒ real model
+
+        has_config = any(_file_exists(path / f) for f in config_files)
+        return has_weights and has_config
 
     def _cache_size_mb(self) -> float:
         p = self._local_model_path()

@@ -1,0 +1,71 @@
+{% extends 'coding_ide/base_ide.html' %}
+{% block title %}コードのアップロード — コーディングIDE{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-7">
+        <div class="mb-4">
+            <h1 class="h4 mb-1" style="color:var(--ide-text);">
+                <i class="bi bi-upload" style="color:var(--ide-accent-light);"></i>
+                ナレッジベースにコードをアップロード
+            </h1>
+            <p style="color:var(--ide-muted); font-size:.85rem; margin-bottom:0;">
+                アップロードされたファイルはチャンクに分割され、Qwen 2.5 CoderによるRAG検索用にインデックスされます。
+            </p>
+        </div>
+
+        <div class="ide-card">
+            <div class="card-header"><i class="bi bi-file-code me-2"></i>コードファイルの詳細</div>
+            <div class="card-body">
+                <form method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+
+                    {% for field in form %}
+                    <div class="mb-3">
+                        <label for="{{ field.id_for_label }}"
+                               class="form-label" style="color:var(--ide-text); font-size:.85rem;">
+                            {{ field.label }}
+                            {% if field.field.required %}<span style="color:var(--ide-red);">*</span>{% endif %}
+                        </label>
+                        {{ field }}
+                        {% if field.help_text %}
+                        <div class="form-text" style="color:var(--ide-muted); font-size:.75rem;">{{ field.help_text }}</div>
+                        {% endif %}
+                        {% if field.errors %}
+                        {% for err in field.errors %}
+                        <div style="color:var(--ide-red); font-size:.78rem;">{{ err }}</div>
+                        {% endfor %}
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+
+                    <div class="d-flex gap-3 mt-4">
+                        <button type="submit" class="btn"
+                                style="background:var(--ide-accent); color:white; border:none; font-weight:600;">
+                            <i class="bi bi-upload me-1"></i> アップロード &amp; インデックス
+                        </button>
+                        <a href="{% url 'coding_ide:knowledge_base' %}" class="btn"
+                           style="background:rgba(255,255,255,.05); color:var(--ide-muted); border:1px solid var(--ide-border);">
+                            キャンセル
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- ヒント -->
+        <div class="ide-card mt-3">
+            <div class="card-header"><i class="bi bi-lightbulb me-2"></i>RAG精度を高めるヒント</div>
+            <div class="card-body" style="font-size:.82rem; color:var(--ide-muted);">
+                <ul class="mb-0">
+                    <li><strong style="color:var(--ide-text);">明確なタイトル:</strong> "utils.py" より "認証ミドルウェア — FastAPI" の方が効果的</li>
+                    <li><strong style="color:var(--ide-text);">良い説明:</strong> コードの目的を説明することで検索精度が向上します</li>
+                    <li><strong style="color:var(--ide-text);">タグ:</strong> <code>auth, jwt, middleware, orm</code> などのキーワードを追加</li>
+                    <li><strong style="color:var(--ide-text);">一ファイル一機能:</strong> 小さく焦点を絞ったファイルの方がインデックス精度が高い</li>
+                    <li><strong style="color:var(--ide-text);">対応形式:</strong> .py, .js, .ts, .java, .cpp, .go, .rs, .cs, .sql, .sh, .md など</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
