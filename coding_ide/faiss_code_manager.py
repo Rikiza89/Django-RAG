@@ -1,7 +1,7 @@
 """
-FAISS Vector Store — Knowledge Hub (app_core)
-CPU-only index. faiss-gpu-cu12 has no Python 3.12+ wheels; CPU FAISS is
-fast enough for this scale and keeps GPU VRAM free for Ollama.
+FAISS Vector Store — Coding IDE
+CPU-only, separate index from the Knowledge Hub.
+Shares the same embedding model loaded by app_core.
 """
 import logging
 import os
@@ -12,21 +12,21 @@ import numpy as np
 from pathlib import Path
 from django.conf import settings
 
-from .cache_manager import embedding_cache
+from .cache_manager import code_embedding_cache
 
 logger = logging.getLogger(__name__)
 
 
-class FAISSManager:
-    """FAISS flat-L2 index with IDMap for document chunk retrieval."""
+class CodeFAISSManager:
+    """Flat L2 FAISS index for code chunk retrieval — CPU only."""
 
     def __init__(self):
-        self.index_path   = Path(settings.FAISS_INDEX_PATH)
-        self.index_file   = self.index_path / 'index.faiss'
+        self.index_path    = Path(settings.CODE_FAISS_INDEX_PATH)
+        self.index_file    = self.index_path / 'index.faiss'
         self.metadata_path = self.index_path / 'metadata.pkl'
 
-        self.index    = None
-        self.metadata = []
+        self.index     = None
+        self.metadata  = []
         self.dimension = None
 
         os.makedirs(self.index_path, exist_ok=True)
@@ -35,91 +35,90 @@ class FAISSManager:
     # ------------------------------------------------------------------
     def initialize_index(self, dimension: int = None):
         if dimension is None:
-            dimension = embedding_cache.get_embedding_dimension()
+            dimension = code_embedding_cache.get_embedding_dimension()
         self.dimension = dimension
-        logger.info(f"Initialising FAISS index (dim={dimension})")
         flat = faiss.IndexFlatL2(dimension)
         self.index = faiss.IndexIDMap(flat)
         self.metadata = []
+        logger.info(f"Code FAISS index initialised (dim={dimension})")
 
     # ------------------------------------------------------------------
-    def add_documents(self, chunks: list, document_id: int,
-                      document_info: dict) -> int:
-        if not chunks:
+    def add_chunks(self, chunks_data: list, code_file_id: int,
+                   file_info: dict) -> int:
+        """
+        chunks_data: list of dicts {'content', 'start_line', 'chunk_type'}
+        """
+        if not chunks_data:
             return 0
         if self.index is None:
             self.initialize_index()
 
-        embeddings = embedding_cache.embed_texts(chunks)
+        texts      = [c['content'] for c in chunks_data]
+        embeddings = code_embedding_cache.embed_texts(texts)
         start_id   = len(self.metadata)
-        chunk_ids  = np.arange(start_id, start_id + len(chunks), dtype=np.int64)
+        ids        = np.arange(start_id, start_id + len(texts), dtype=np.int64)
 
-        self.index.add_with_ids(embeddings, chunk_ids)
+        self.index.add_with_ids(embeddings, ids)
 
-        for i, chunk in enumerate(chunks):
+        for i, chunk in enumerate(chunks_data):
             self.metadata.append({
-                'id':             int(chunk_ids[i]),
-                'document_id':    document_id,
-                'chunk_index':    i,
-                'content':        chunk,
-                'document_title': document_info.get('title', ''),
-                'access_level':   document_info.get('access_level', ''),
-                'department':     document_info.get('department', ''),
+                'id':          int(ids[i]),
+                'code_file_id': code_file_id,
+                'chunk_index': i,
+                'content':     chunk['content'],
+                'start_line':  chunk.get('start_line', 0),
+                'chunk_type':  chunk.get('chunk_type', 'code'),
+                'title':       file_info.get('title', ''),
+                'language':    file_info.get('language', ''),
+                'tags':        file_info.get('tags', ''),
             })
 
-        logger.info(f"Added {len(chunks)} chunks (total: {self.index.ntotal})")
         self.save_index()
-        return len(chunks)
+        logger.info(f"Added {len(texts)} code chunks (total: {self.index.ntotal})")
+        return len(texts)
 
     # ------------------------------------------------------------------
-    def search(self, query: str, top_k: int = None, user=None) -> list:
+    def search(self, query: str, top_k: int = None,
+               language_filter: str = None) -> list:
         if self.index is None or self.index.ntotal == 0:
             return []
 
-        top_k = top_k or settings.FAISS_TOP_K
-        query_emb = embedding_cache.embed_texts([query])
-        search_k  = min(top_k * 3, self.index.ntotal)
+        top_k     = top_k or settings.CODE_FAISS_TOP_K
+        query_emb = code_embedding_cache.embed_texts([query])
+        search_k  = min(top_k * 4, self.index.ntotal)
         distances, indices = self.index.search(query_emb, search_k)
 
         results = []
         for dist, idx in zip(distances[0], indices[0]):
             if idx == -1 or idx >= len(self.metadata):
                 continue
-
             meta = self.metadata[idx]
-
-            if user is not None:
-                from .models import Document
-                try:
-                    doc = Document.objects.get(id=meta['document_id'])
-                    if not doc.can_access(user):
-                        continue
-                except Document.DoesNotExist:
-                    continue
-
+            if language_filter and meta.get('language') != language_filter:
+                continue
             results.append({
                 'content':        meta['content'],
-                'document_id':    meta['document_id'],
-                'document_title': meta['document_title'],
+                'code_file_id':   meta['code_file_id'],
+                'title':          meta['title'],
+                'language':       meta['language'],
                 'chunk_index':    meta['chunk_index'],
+                'start_line':     meta['start_line'],
+                'chunk_type':     meta['chunk_type'],
                 'distance':       float(dist),
                 'relevance_score': 1.0 / (1.0 + float(dist)),
             })
             if len(results) >= top_k:
                 break
 
-        logger.info(f"Search returned {len(results)} results")
         return results
 
     # ------------------------------------------------------------------
-    def remove_document(self, document_id: int) -> int:
+    def remove_file(self, code_file_id: int) -> int:
         if self.index is None:
             return 0
         to_remove = [i for i, m in enumerate(self.metadata)
-                     if m['document_id'] == document_id]
+                     if m['code_file_id'] == code_file_id]
         if not to_remove:
             return 0
-        logger.info(f"Removing {len(to_remove)} chunks for doc {document_id}")
         self._rebuild_without(to_remove)
         return len(to_remove)
 
@@ -129,8 +128,8 @@ class FAISSManager:
         if not remaining:
             self.initialize_index(self.dimension)
             return
-        texts = [m['content'] for m in remaining]
-        embeddings = embedding_cache.embed_texts(texts)
+        texts      = [m['content'] for m in remaining]
+        embeddings = code_embedding_cache.embed_texts(texts)
         self.initialize_index(self.dimension)
         ids = np.arange(len(texts), dtype=np.int64)
         self.index.add_with_ids(embeddings, ids)
@@ -145,7 +144,6 @@ class FAISSManager:
             faiss.write_index(self.index, str(self.index_file))
         with open(self.metadata_path, 'wb') as f:
             pickle.dump({'metadata': self.metadata, 'dimension': self.dimension}, f)
-        logger.debug(f"FAISS index saved ({self.index.ntotal if self.index else 0} vectors)")
 
     def load_index(self):
         try:
@@ -155,25 +153,21 @@ class FAISSManager:
                     data = pickle.load(f)
                     self.metadata  = data['metadata']
                     self.dimension = data['dimension']
-                logger.info(f"FAISS index loaded ({len(self.metadata)} chunks)")
+                logger.info(f"Code FAISS index loaded ({len(self.metadata)} chunks)")
         except Exception as exc:
-            logger.error(f"Could not load FAISS index: {exc}")
+            logger.error(f"Could not load code FAISS index: {exc}")
 
     def get_stats(self) -> dict:
         stats = {
             'total_chunks': len(self.metadata),
             'index_size':   self.index.ntotal if self.index else 0,
             'dimension':    self.dimension,
+            'gpu_enabled':  False,
             'index_file_size_mb': 0,
-            'metadata_file_size_mb': 0,
-            'gpu_enabled': False,      # always False — CPU only
         }
         if self.index_file.exists():
             stats['index_file_size_mb'] = round(
                 self.index_file.stat().st_size / (1024 * 1024), 2)
-        if self.metadata_path.exists():
-            stats['metadata_file_size_mb'] = round(
-                self.metadata_path.stat().st_size / (1024 * 1024), 2)
         return stats
 
     def clear_index(self):
@@ -181,4 +175,4 @@ class FAISSManager:
         self.save_index()
 
 
-faiss_manager = FAISSManager()
+code_faiss_manager = CodeFAISSManager()

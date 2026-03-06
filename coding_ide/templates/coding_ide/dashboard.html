@@ -1,0 +1,143 @@
+{% extends 'coding_ide/base_ide.html' %}
+{% block title %}Dashboard — Coding IDE{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="h3 mb-1" style="color:var(--ide-text);">
+            <i class="bi bi-code-slash" style="color:var(--ide-accent-light);"></i>
+            Coding IDE Dashboard
+        </h1>
+        <p class="mb-0" style="color:var(--ide-muted); font-size:.85rem;">
+            RAG-powered code assistant using <strong style="color:var(--ide-accent-light);">Qwen 2.5 Coder 7B</strong>
+        </p>
+    </div>
+    <a href="{% url 'coding_ide:ide_chat' %}" class="btn btn-primary" style="background:var(--ide-accent); border:none;">
+        <i class="bi bi-terminal"></i> Open Code Assistant
+    </a>
+</div>
+
+<!-- Stats row -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="stat-ide">
+            <div class="stat-val">{{ stats.total_files }}</div>
+            <div class="stat-label"><i class="bi bi-files me-1"></i>Code Files</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-ide green">
+            <div class="stat-val">{{ stats.processed_files }}</div>
+            <div class="stat-label"><i class="bi bi-check-circle me-1"></i>Indexed</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-ide yellow">
+            <div class="stat-val">{{ stats.total_chunks }}</div>
+            <div class="stat-label"><i class="bi bi-layout-text-sidebar me-1"></i>Chunks</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-ide" style="border-left-color:var(--ide-accent-light);">
+            <div class="stat-val">{{ stats.total_queries }}</div>
+            <div class="stat-label"><i class="bi bi-chat-dots me-1"></i>Your Queries</div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
+    <!-- Recent files -->
+    <div class="col-lg-7">
+        <div class="ide-card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-journal-code me-2"></i>Recent Code Files</span>
+                <a href="{% url 'coding_ide:knowledge_base' %}" class="btn btn-sm" style="background:rgba(124,58,237,.2);color:var(--ide-accent-light);font-size:.75rem;">
+                    View All
+                </a>
+            </div>
+            <div class="card-body p-0">
+                {% if recent_files %}
+                <table class="table table-ide mb-0">
+                    <thead>
+                        <tr>
+                            <th>File</th>
+                            <th>Language</th>
+                            <th>Chunks</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for f in recent_files %}
+                        <tr>
+                            <td>
+                                <a href="{% url 'coding_ide:code_detail' f.pk %}"
+                                   style="color:var(--ide-accent-light); text-decoration:none;">
+                                    {{ f.title|truncatechars:40 }}
+                                </a>
+                                {% if f.description %}
+                                <div style="font-size:.72rem; color:var(--ide-muted);">{{ f.description|truncatechars:55 }}</div>
+                                {% endif %}
+                            </td>
+                            <td><span class="lang-badge">{{ f.get_language_display }}</span></td>
+                            <td style="color:var(--ide-muted);">{{ f.chunk_count }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="p-4 text-center" style="color:var(--ide-muted);">
+                    <i class="bi bi-inbox fs-2 mb-2 d-block"></i>
+                    No code files yet.
+                    <a href="{% url 'coding_ide:upload_code' %}" style="color:var(--ide-accent-light);">Upload your first file</a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Right column -->
+    <div class="col-lg-5">
+        <!-- Language distribution -->
+        {% if lang_dist %}
+        <div class="ide-card mb-3">
+            <div class="card-header"><i class="bi bi-bar-chart me-2"></i>Language Distribution</div>
+            <div class="card-body">
+                {% for item in lang_dist %}
+                <div class="mb-2">
+                    <div class="d-flex justify-content-between mb-1" style="font-size:.8rem;">
+                        <span style="color:var(--ide-text);">{{ item.language|title }}</span>
+                        <span style="color:var(--ide-muted);">{{ item.count }}</span>
+                    </div>
+                    <div class="progress" style="height:5px; background:var(--ide-border);">
+                        <div class="progress-bar" role="progressbar"
+                             style="width:{{ item.count|floatformat:0 }}%; background:var(--ide-accent);"></div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Recent queries -->
+        <div class="ide-card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-clock-history me-2"></i>Recent Queries</span>
+                <a href="{% url 'coding_ide:query_history' %}" style="color:var(--ide-accent-light); font-size:.75rem;">View All</a>
+            </div>
+            <div class="card-body">
+                {% if recent_queries %}
+                {% for q in recent_queries %}
+                <div class="mb-3 pb-3" style="border-bottom: 1px solid var(--ide-border);">
+                    <div style="font-size:.82rem; color:var(--ide-text);">{{ q.query_text|truncatechars:70 }}</div>
+                    <div style="font-size:.7rem; color:var(--ide-muted);">{{ q.created_at|timesince }} ago · {{ q.total_time_ms }}ms</div>
+                </div>
+                {% endfor %}
+                {% else %}
+                <div style="color:var(--ide-muted); font-size:.85rem; text-align:center;">
+                    No queries yet. <a href="{% url 'coding_ide:ide_chat' %}" style="color:var(--ide-accent-light);">Ask the assistant</a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

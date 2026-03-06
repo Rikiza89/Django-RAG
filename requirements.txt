@@ -1,29 +1,52 @@
+# ============================================================
+# Django-Coding-RAG — Python Dependencies
+# ============================================================
+#
+# NVIDIA RTX 5050 / CUDA 12.8 GPU setup:
+#   1. Install PyTorch with CUDA support:
+#      pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
+#
+#   2. faiss-gpu-cu12 does NOT support Python 3.12+.
+#      Use faiss-cpu only — it is fast enough for this scale.
+#      Ollama uses the GPU directly for LLM inference.
+#
+# CPU-only setup (no GPU):
+#   pip install torch torchvision torchaudio
+#
+# After installing deps, cache the embedding model:
+#   python manage.py cache_models
+# ============================================================
 
-# Core Django
-Django
+# --- Core Django ---
+Django>=4.2
 python-decouple
 
-# Document Processing
+# --- Document Processing ---
 PyMuPDF
 python-docx
 openpyxl
 
-# AI/ML - CPU-only versions
-sentence-transformers
+# --- AI / ML ---
+# Embeddings always run on CPU (avoids CUDA kernel issues with sentence-transformers).
+# Install PyTorch with CUDA 12.4 for GPU Ollama detection:
+#   pip install torch --index-url https://download.pytorch.org/whl/cu124
 torch
-faiss-cpu
-numpy
+sentence-transformers
+faiss-cpu        # faiss-gpu-cu12 has no Python 3.12+ wheels — use CPU
 
-# Ollama client
+# --- Ollama Python client (Ollama itself uses GPU for inference) ---
 ollama
 
-# Task Scheduling
+# --- Git Integration for Coding IDE ---
+gitpython
+
+# --- Code Syntax Highlighting ---
+pygments
+
+# --- Task Scheduling ---
 django-apscheduler
 
-# Utilities
-python-magic
-Pillow
+# --- Utilities ---
 requests
-
-# Development
-django-debug-toolbar
+numpy
+Pillow

@@ -1,376 +1,189 @@
-# 🚀 Quick Setup Guide
+# Setup Guide — Django-RAG
 
-This guide will help you get the Knowledge Management System up and running in minutes.
+## Prerequisites
 
-## ⚡ Quick Start (5 Minutes)
+- Python 3.11 or 3.12
+- pip
+- [Ollama](https://ollama.ai) installed and running
+- Git (for the Git Manager feature)
 
-### 1. Install Ollama
+---
+
+## 1. Install Python Dependencies
+
 ```bash
-# Linux/macOS
-curl -fsSL https://ollama.ai/install.sh | sh
-
-# Windows: Download from https://ollama.ai/download
-```
-
-### 2. Pull the LLM Model
-```bash
-ollama pull llama3.2:3b
-```
-
-### 3. Setup Python Environment
-```bash
-# Clone/navigate to project
-cd knowledge_manager
-
-# Create virtual environment
-python -m venv venv
-
-# Activate it
-source venv/bin/activate  # Linux/macOS
-# OR
-venv\Scripts\activate     # Windows
-
-# Install dependencies
 pip install -r requirements.txt
 ```
 
-### 4. Configure Environment
-```bash
-# Copy example config
-cp .env.example .env
+> **Note**: `faiss-gpu-cu12` has no Python 3.12+ wheels. Use `faiss-cpu` (already in requirements).
 
-# Optional: Edit .env if needed
-nano .env
+### PyTorch CUDA (optional but recommended for GPU reporting)
+
+Install PyTorch with CUDA 12.4 support for accurate GPU detection:
+
+```bash
+pip install torch --index-url https://download.pytorch.org/whl/cu124
 ```
 
-### 5. Download Embedding Model (One-time, needs internet)
+> Embeddings always run on CPU regardless. This only affects the GPU detection readout in System Status.
+
+---
+
+## 2. Environment Configuration
+
 ```bash
-python manage.py shell
+cp change.env.txt .env
 ```
 
-Then in the Python shell:
-```python
-from app_core.cache_manager import embedding_cache
-print("Downloading embedding model...")
-model = embedding_cache.get_model()
-print("✓ Model cached successfully!")
-exit()
+Edit `.env`:
+
+```env
+SECRET_KEY=your-secret-key-here
+DEBUG=False
+ALLOWED_HOSTS=localhost,127.0.0.1
+
+# Document LLM
+OLLAMA_HOST=http://localhost:11434
+OLLAMA_MODEL=llama3.2:3b
+
+# Coding LLM (Qwen 2.5 Coder)
+CODING_OLLAMA_HOST=http://localhost:11434
+CODING_OLLAMA_MODEL=qwen2.5-coder:7b-instruct-q4_K_M
+
+# Embedding model (shared by both apps, always CPU)
+EMBEDDING_MODEL=sentence-transformers/all-mpnet-base-v2
 ```
 
-### 6. Initialize Database
+---
+
+## 3. Database Setup
+
 ```bash
-# Create database tables
-python manage.py makemigrations
 python manage.py migrate
-
-# Create admin user
-python manage.py createsuperuser
-# Enter: username, email (optional), password
 ```
 
-### 7. Start the System
-```bash
-# Terminal 1: Start Ollama
-ollama serve
+---
 
-# Terminal 2: Start Django (in project directory)
+## 4. Download Embedding Model
+
+The embedding model must be downloaded before indexing works.
+
+```bash
+# Download and cache the model
+python manage.py cache_models
+
+# Check status without downloading
+python manage.py cache_models --check
+
+# Force re-download
+python manage.py cache_models --force
+```
+
+The model (~420 MB) is cached at `models_cache/` and shared between both apps.
+Download progress is visible in the System Status page during runtime.
+
+---
+
+## 5. Create Admin User
+
+```bash
+python manage.py createsuperuser
+```
+
+---
+
+## 6. Pull Ollama Models
+
+```bash
+# For document Q&A
+ollama pull llama3.2:3b
+
+# For code assistant (choose based on VRAM)
+ollama pull qwen2.5-coder:7b-instruct-q4_K_M   # ~4.5 GB VRAM (recommended)
+ollama pull qwen2.5-coder:14b-instruct-q4_K_M  # ~8.5 GB VRAM (higher quality)
+```
+
+---
+
+## 7. Run the Server
+
+```bash
 python manage.py runserver
 ```
 
-### 8. Access the Application
-Open your browser: **http://localhost:8000**
-
-Login with your superuser credentials!
+Visit [http://localhost:8000](http://localhost:8000)
 
 ---
 
-## 📝 Creating Test Users
+## VRAM Guidelines (RTX 5050 / 8 GB)
 
-### Via Django Shell
-```bash
-python manage.py shell
-```
-
-```python
-from django.contrib.auth.models import User
-from app_core.models import UserProfile, UserRole
-
-# Create a manager
-manager = User.objects.create_user('manager1', 'manager@example.com', 'password123')
-UserProfile.objects.create(user=manager, role=UserRole.MANAGER, department='Engineering')
-
-# Create an employee
-employee = User.objects.create_user('employee1', 'employee@example.com', 'password123')
-UserProfile.objects.create(user=employee, role=UserRole.EMPLOYEE, department='Engineering')
-
-print("✓ Test users created!")
-exit()
-```
-
-### Via Admin Interface
-1. Go to http://localhost:8000/admin
-2. Login with superuser
-3. Click "Users" → "Add User"
-4. Fill in username and password
-5. Save
-6. Click "User profiles" → "Add User Profile"
-7. Select the user, set role and department
-8. Save
+| Model | VRAM | Quality |
+|-------|------|---------|
+| `qwen2.5-coder:7b-instruct-q4_K_M` | ~4.5 GB | Good |
+| `qwen2.5-coder:14b-instruct-q4_K_M` | ~8.5 GB | Better (tight fit) |
+| `llama3.2:3b` | ~2 GB | Fast for documents |
+| `llama3.2:8b` | ~5 GB | Better for documents |
 
 ---
 
-## 📚 First Document Upload
+## GPU Setup Details
 
-1. Login as admin or manager
-2. Click "Upload Document" in sidebar
-3. Select a file (PDF, DOCX, TXT, or XLSX)
-4. Set title and access level
-5. Click "Upload and Process"
-6. Wait for processing (usually 5-15 seconds)
-7. Document is ready for querying!
+| Component | Device | Notes |
+|-----------|--------|-------|
+| Embedding model | **CPU** | Always CPU — avoids CUDA kernel errors |
+| FAISS index | **CPU** | `faiss-cpu` — no Python 3.12+ wheels for faiss-gpu |
+| Ollama LLM | **GPU** | Uses its own CUDA runtime automatically |
 
 ---
 
-## 💬 First Query
+## Using the Code Editor
 
-1. Click "Chat / Query" in sidebar
-2. Type a question about your document content
-3. Click "Ask Question"
-4. Get AI-powered answer with sources!
-
----
-
-## 🔧 Troubleshooting
-
-### Issue: "Ollama connection failed"
-**Solution:**
-```bash
-# Check if Ollama is running
-curl http://localhost:11434/api/tags
-
-# If not, start it
-ollama serve
-```
-
-### Issue: "Model not available"
-**Solution:**
-```bash
-# List available models
-ollama list
-
-# Pull the required model
-ollama pull llama3.2:3b
-```
-
-### Issue: "Embedding model not cached"
-**Solution:**
-```bash
-python manage.py shell
-```
-```python
-from app_core.cache_manager import embedding_cache
-embedding_cache.get_model()  # Downloads and caches
-exit()
-```
-
-### Issue: Out of Memory
-**Solution:** Edit `.env`:
-```bash
-EMBEDDING_BATCH_SIZE=4
-CHUNK_SIZE=300
-MAX_CONCURRENT_EMBEDDINGS=1
-```
-
-### Issue: Slow Processing
-**Tips:**
-- Reduce `CHUNK_SIZE` to 300-400
-- Process documents one at a time
-- Use smaller model if available
-- Ensure Ollama runs natively (not in Docker)
+1. Navigate to **Coding IDE → Code Editor**
+2. Write code in the Monaco editor (VS Code experience)
+3. Select language from the dropdown
+4. **Ctrl+S** or click **Save** to persist the snippet
+5. Click **Ask AI** to send the code to the code assistant with a review prompt
+6. Previous snippets appear in the left panel — click to load
 
 ---
 
-## 🎯 System Architecture
+## Using the Git Manager
 
-```
-User Request
-    ↓
-Django Views
-    ↓
-RAG Pipeline
-    ↓
-┌─────────────────┬──────────────────┬─────────────────┐
-│ Document        │ Embedding Cache  │ FAISS Index     │
-│ Processor       │ (Offline Model)  │ (Vector Store)  │
-└─────────────────┴──────────────────┴─────────────────┘
-    ↓
-Ollama (Local LLM)
-    ↓
-Response to User
-```
+1. Navigate to **Coding IDE → Git Manager**
+2. Click **Add Repository** and enter the absolute path to a local folder
+3. Select a repository from the list to work with it
+4. Available actions:
+   - **Status** — view working tree status and recent commits
+   - **Init** — initialize a new git repository
+   - **Add** — stage files (leave blank to stage all)
+   - **Commit** — commit with a message
+   - **New Branch** — create a new branch
+   - **Checkout** — switch branches (prefix `+` to create new)
+   - **Pull** — pull from remote (format: `origin main`)
+   - **Push** — push to remote (format: `origin main`)
 
 ---
 
-## 📊 Performance Tips
+## Troubleshooting
 
-### For 8GB RAM Systems:
-```bash
-# .env settings
-EMBEDDING_BATCH_SIZE=8
-CHUNK_SIZE=400
-CHUNK_OVERLAP=40
-MAX_CONCURRENT_EMBEDDINGS=1
-FAISS_TOP_K=5
-```
+### "CUDA error: no kernel image" on file upload
+- This has been fixed. Embeddings always run on CPU.
+- Ensure `EMBEDDING_DEVICE = 'cpu'` in settings (it is hardcoded).
 
-### For Better Performance:
-```bash
-# .env settings
-EMBEDDING_BATCH_SIZE=16
-CHUNK_SIZE=500
-CHUNK_OVERLAP=50
-FAISS_TOP_K=7
-ENABLE_QUERY_CACHE=True
-QUERY_CACHE_SIZE=100
-```
+### "No CUDA device found" in System Status
+- Install PyTorch with CUDA: `pip install torch --index-url https://download.pytorch.org/whl/cu124`
+- Note: this only affects the reporting. Ollama still uses GPU for inference.
 
----
+### Embedding model not downloading
+- Run `python manage.py cache_models`
+- Check internet access to Hugging Face
+- Check disk space (~500 MB required)
 
-## 🔐 Access Control Examples
+### Ollama model not available
+- Run `ollama pull <model-name>`
+- Verify Ollama is running: `ollama serve`
+- Check `CODING_OLLAMA_HOST` in `.env`
 
-### Public Document (All users can access)
-- Access Level: **Public**
-- Department: *leave empty*
-
-### Department Document (Only Engineering team)
-- Access Level: **Department**
-- Department: **Engineering**
-
-### Manager Document (Managers and Admins only)
-- Access Level: **Manager**
-- Department: *leave empty or specify*
-
-### Private Document (Admins only)
-- Access Level: **Private**
-- Department: *leave empty*
-
----
-
-## 🔄 Going Fully Offline
-
-After initial setup (which requires internet for model downloads):
-
-1. ✅ Embedding model is cached in `./models_cache/`
-2. ✅ Ollama model is downloaded
-3. ✅ All Python dependencies are installed
-
-**Now you can work 100% offline!**
-
-Disconnect from internet and everything still works:
-- Upload documents ✓
-- Query documents ✓
-- Process new files ✓
-- Generate AI responses ✓
-
----
-
-## 📦 Backup & Restore
-
-### Backup Everything:
-```bash
-# Create backup directory
-mkdir backup_$(date +%Y%m%d)
-cd backup_$(date +%Y%m%d)
-
-# Backup database
-cp ../db.sqlite3 ./
-
-# Backup uploaded documents
-cp -r ../media ./
-
-# Backup FAISS index
-cp -r ../faiss_index ./
-
-# Backup models (optional - can re-download)
-cp -r ../models_cache ./
-```
-
-### Restore:
-```bash
-# Copy files back
-cp backup_20241103/db.sqlite3 ./
-cp -r backup_20241103/media ./
-cp -r backup_20241103/faiss_index ./
-```
-
----
-
-## 🚀 Production Deployment
-
-### Key Changes for Production:
-
-1. **Security** - Update `.env`:
-```bash
-SECRET_KEY=<generate-strong-random-key>
-DEBUG=False
-ALLOWED_HOSTS=yourdomain.com,www.yourdomain.com
-```
-
-2. **Database** - Switch to PostgreSQL:
-```bash
-pip install psycopg2-binary
-```
-
-`.env`:
-```bash
-DATABASE_URL=postgresql://user:pass@localhost:5432/kms_db
-```
-
-3. **Static Files**:
-```bash
-python manage.py collectstatic
-```
-
-4. **Web Server** - Use Gunicorn + Nginx:
-```bash
-pip install gunicorn
-gunicorn knowledge_manager.wsgi:application
-```
-
-5. **Systemd Service** (Linux):
-```ini
-[Unit]
-Description=Knowledge Management System
-After=network.target
-
-[Service]
-User=www-data
-WorkingDirectory=/path/to/knowledge_manager
-ExecStart=/path/to/venv/bin/gunicorn knowledge_manager.wsgi:application
-Restart=always
-
-[Install]
-WantedBy=multi-user.target
-```
-
----
-
-## 📞 Need Help?
-
-- Check `README.md` for detailed documentation
-- Review system status at `/system/status/`
-- Check logs in `knowledge_manager.log`
-- Verify Ollama: `ollama list`
-- Test embedding: Go to system status page
-
----
-
-## ✨ What's Next?
-
-1. **Upload Documents** - Add your company docs
-2. **Create Users** - Set up team members with appropriate roles
-3. **Start Querying** - Ask questions about your documents
-4. **Monitor System** - Check system status regularly
-5. **Backup Data** - Set up regular backups
-
-Enjoy your fully offline, AI-powered knowledge management system! 🎉
+### git not found in Git Manager
+- Install git: `sudo apt install git` (Ubuntu/Debian) or `brew install git` (macOS)
+- Restart the Django server after installation

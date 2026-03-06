@@ -526,3 +526,17 @@ def api_embedding_status(request):
     status = embedding_cache.check_cache_status()
     
     return JsonResponse(status)
+
+
+@login_required
+def api_model_download_status(request):
+    """Return the current embedding-model download state as JSON."""
+    from .cache_manager import get_download_state, embedding_cache
+    state = get_download_state()
+    status = embedding_cache.check_cache_status()
+    return JsonResponse({**state, **{
+        'is_cached':    status['is_cached'],
+        'cache_size_mb': status['cache_size_mb'],
+        'model_name':   status['model_name'],
+        'model_loaded': status['model_loaded'],
+    }})

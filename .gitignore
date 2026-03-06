@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+
+# Django
+*.log
+db.sqlite3
+media/
+staticfiles/
+
+# Model caches & indexes
+models_cache/
+code_models_cache/
+faiss_index/
+code_faiss_index/
+
+# Environment
+.env
+*.env
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

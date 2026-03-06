@@ -1,0 +1,60 @@
+{% extends 'coding_ide/base_ide.html' %}
+{% block title %}Query History — Coding IDE{% endblock %}
+
+{% block content %}
+<h1 class="h4 mb-4" style="color:var(--ide-text);">
+    <i class="bi bi-clock-history" style="color:var(--ide-accent-light);"></i>
+    Code Query History
+</h1>
+
+{% if logs %}
+<div class="ide-card">
+    <div class="card-body p-0">
+        <table class="table table-ide mb-0">
+            <thead>
+                <tr>
+                    <th>Query</th>
+                    <th>Language</th>
+                    <th>Time</th>
+                    <th>When</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in logs %}
+                <tr style="cursor:pointer;" data-bs-toggle="collapse" data-bs-target="#log{{ log.pk }}">
+                    <td style="max-width:400px;">
+                        <div style="font-size:.85rem; color:var(--ide-text);">{{ log.query_text|truncatechars:80 }}</div>
+                    </td>
+                    <td>
+                        {% if log.language_filter %}
+                        <span class="lang-badge">{{ log.language_filter }}</span>
+                        {% else %}
+                        <span style="color:var(--ide-muted); font-size:.75rem;">Any</span>
+                        {% endif %}
+                    </td>
+                    <td style="color:var(--ide-muted); font-size:.78rem;">{{ log.total_time_ms }}ms</td>
+                    <td style="color:var(--ide-muted); font-size:.78rem;">{{ log.created_at|timesince }} ago</td>
+                </tr>
+                <tr class="collapse" id="log{{ log.pk }}">
+                    <td colspan="4" style="background:var(--ide-bg); padding:16px;">
+                        <div style="font-size:.8rem; color:var(--ide-muted); margin-bottom:8px;">
+                            Retrieval: {{ log.retrieval_time_ms }}ms · Inference: {{ log.inference_time_ms }}ms
+                        </div>
+                        <div style="font-size:.82rem; color:var(--ide-text); white-space:pre-wrap; max-height:300px; overflow:auto; background:#0d0d1a; padding:12px; border-radius:8px;">{{ log.response_text }}</div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="ide-card">
+    <div class="card-body text-center py-5" style="color:var(--ide-muted);">
+        <i class="bi bi-inbox fs-1 mb-3 d-block" style="color:var(--ide-border);"></i>
+        <h5 style="color:var(--ide-text);">No queries yet</h5>
+        <a href="{% url 'coding_ide:ide_chat' %}" style="color:var(--ide-accent-light);">Ask the code assistant</a>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

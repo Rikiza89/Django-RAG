@@ -1,0 +1,141 @@
+{% extends 'coding_ide/base_ide.html' %}
+{% block title %}Knowledge Base — Coding IDE{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h4 mb-0" style="color:var(--ide-text);">
+        <i class="bi bi-journal-code" style="color:var(--ide-accent-light);"></i>
+        Code Knowledge Base
+    </h1>
+    <a href="{% url 'coding_ide:upload_code' %}" class="btn btn-sm"
+       style="background:var(--ide-accent); color:white; border:none;">
+        <i class="bi bi-upload me-1"></i> Upload Code
+    </a>
+</div>
+
+<!-- Filters -->
+<div class="ide-card mb-4">
+    <div class="card-body py-2">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-md-4">
+                <input type="text" name="search" value="{{ current_search }}"
+                       class="form-control form-control-sm" placeholder="Search title, description, tags…">
+            </div>
+            <div class="col-md-3">
+                <select name="language" class="form-select form-select-sm">
+                    <option value="">All Languages</option>
+                    {% for val, label in languages %}
+                    <option value="{{ val }}" {% if val == current_language %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select name="status" class="form-select form-select-sm">
+                    <option value="">All Status</option>
+                    <option value="processed" {% if current_status == 'processed' %}selected{% endif %}>Indexed</option>
+                    <option value="failed"    {% if current_status == 'failed'    %}selected{% endif %}>Failed</option>
+                    <option value="pending"   {% if current_status == 'pending'   %}selected{% endif %}>Pending</option>
+                </select>
+            </div>
+            <div class="col-md-3 d-flex gap-2">
+                <button type="submit" class="btn btn-sm" style="background:var(--ide-accent); color:white; border:none;">
+                    <i class="bi bi-search"></i> Filter
+                </button>
+                <a href="{% url 'coding_ide:knowledge_base' %}" class="btn btn-sm"
+                   style="background:rgba(255,255,255,.05); color:var(--ide-muted); border:1px solid var(--ide-border);">
+                    Reset
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- File list -->
+{% if files %}
+<div class="ide-card">
+    <div class="card-body p-0">
+        <table class="table table-ide mb-0">
+            <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>Language</th>
+                    <th>Status</th>
+                    <th>Chunks</th>
+                    <th>Uploaded</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for f in files %}
+                <tr>
+                    <td>
+                        <a href="{% url 'coding_ide:code_detail' f.pk %}"
+                           style="color:var(--ide-accent-light); text-decoration:none; font-weight:500;">
+                            {{ f.title|truncatechars:45 }}
+                        </a>
+                        {% if f.description %}
+                        <div style="font-size:.72rem; color:var(--ide-muted);">{{ f.description|truncatechars:60 }}</div>
+                        {% endif %}
+                        {% if f.tags %}
+                        <div class="mt-1">
+                            {% for tag in f.tag_list %}
+                            <span style="font-size:.65rem; background:rgba(124,58,237,.1); color:var(--ide-accent-light);
+                                          padding:1px 6px; border-radius:10px; margin-right:3px;">{{ tag }}</span>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </td>
+                    <td><span class="lang-badge">{{ f.get_language_display }}</span></td>
+                    <td>
+                        {% if f.is_processed %}
+                        <span style="color:var(--ide-green); font-size:.8rem;"><i class="bi bi-check-circle"></i> Indexed</span>
+                        {% elif f.processing_error %}
+                        <span style="color:var(--ide-red); font-size:.8rem;" title="{{ f.processing_error }}">
+                            <i class="bi bi-exclamation-circle"></i> Failed
+                        </span>
+                        {% else %}
+                        <span style="color:var(--ide-yellow); font-size:.8rem;"><i class="bi bi-hourglass-split"></i> Pending</span>
+                        {% endif %}
+                    </td>
+                    <td style="color:var(--ide-muted);">{{ f.chunk_count }}</td>
+                    <td style="color:var(--ide-muted); font-size:.78rem;">{{ f.uploaded_at|date:"M d, Y" }}</td>
+                    <td>
+                        <div class="d-flex gap-1">
+                            <form method="post" action="{% url 'coding_ide:code_reindex' f.pk %}"
+                                  onsubmit="return confirm('Reindex this file?');">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm"
+                                        style="background:rgba(245,158,11,.1);color:var(--ide-yellow);border:none;font-size:.72rem;">
+                                    <i class="bi bi-arrow-clockwise"></i>
+                                </button>
+                            </form>
+                            <form method="post" action="{% url 'coding_ide:code_delete' f.pk %}"
+                                  onsubmit="return confirm('Delete \'{{ f.title }}\'? This cannot be undone.');">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm"
+                                        style="background:rgba(239,68,68,.1);color:var(--ide-red);border:none;font-size:.72rem;">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="ide-card">
+    <div class="card-body text-center py-5" style="color:var(--ide-muted);">
+        <i class="bi bi-inbox fs-1 mb-3 d-block" style="color:var(--ide-border);"></i>
+        <h5 style="color:var(--ide-text);">No code files found</h5>
+        <p>Upload source code files to build your coding knowledge base.</p>
+        <a href="{% url 'coding_ide:upload_code' %}" class="btn"
+           style="background:var(--ide-accent); color:white; border:none;">
+            <i class="bi bi-upload me-1"></i> Upload Your First File
+        </a>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
