@@ -48,10 +48,18 @@ OLLAMA_MODEL=llama3.2:3b
 
 # Coding LLM (Qwen 2.5 Coder)
 CODING_OLLAMA_HOST=http://localhost:11434
-CODING_OLLAMA_MODEL=qwen2.5-coder:7b-instruct-q4_K_M
+CODING_OLLAMA_MODEL=qwen2.5-coder:14b-instruct-q4_K_M
 
 # Embedding model (shared by both apps, always CPU)
-EMBEDDING_MODEL=sentence-transformers/all-mpnet-base-v2
+EMBEDDING_MODEL=BAAI/bge-large-en-v1.5
+EMBEDDING_DEVICE=cpu
+EMBEDDING_BATCH_SIZE=64
+
+# Upload and retrieval
+MAX_UPLOAD_SIZE_MB=100
+CHUNK_SIZE=512
+CHUNK_OVERLAP=50
+TOP_K_RESULTS=5
 ```
 
 ---
@@ -79,8 +87,13 @@ python manage.py cache_models --check
 python manage.py cache_models --force
 ```
 
-The model (~420 MB) is cached at `models_cache/` and shared between both apps.
+The model (~1.3 GB for `BAAI/bge-large-en-v1.5`) is cached at `models_cache/` and shared between both apps.
 Download progress is visible in the System Status page during runtime.
+
+> **Windows users**: Enable **Developer Mode** (Settings → System → Developer Mode) before running
+> `cache_models`. Without it, HuggingFace Hub cannot create symlinks and falls back to a degraded
+> cache mode that may show "Not Cached" in the dashboard even after a successful download.
+> The app includes a three-stage cache detection fallback, but enabling Developer Mode avoids the issue entirely.
 
 ---
 
@@ -150,6 +163,22 @@ Visit [http://localhost:8000](http://localhost:8000)
 
 ---
 
+## Japanese UI
+
+The application ships with full Japanese translations of all pages. No additional setup is required.
+
+**Switching language:**
+- Click **EN** or **JA** in the bottom-right corner (Knowledge Hub) or in the sidebar (Coding IDE)
+- The preference is stored in your browser session and persists across page navigation
+
+**How it works:**
+- A custom `LangLoader` transparently serves templates from `app_core/ja/` or `coding_ide/ja/`
+  when the session language is `ja`
+- The `/lang/en/` and `/lang/ja/` URLs set the session preference and redirect back
+- No Django i18n / gettext / `.po` files are used
+
+---
+
 ## Using the Code Editor
 
 1. Navigate to **Coding IDE → Code Editor**
@@ -182,16 +211,21 @@ Visit [http://localhost:8000](http://localhost:8000)
 
 ### "CUDA error: no kernel image" on file upload
 - This has been fixed. Embeddings always run on CPU.
-- Ensure `EMBEDDING_DEVICE = 'cpu'` in settings (it is hardcoded).
+- Ensure `EMBEDDING_DEVICE = 'cpu'` in `.env` (it is also hardcoded in settings).
 
 ### "No CUDA device found" in System Status
 - Install PyTorch with CUDA: `pip install torch --index-url https://download.pytorch.org/whl/cu124`
 - Note: this only affects the reporting. Ollama still uses GPU for inference.
 
+### "Not Cached" shown after successful `cache_models` run (Windows)
+- Enable **Windows Developer Mode** so HuggingFace Hub can create symlinks.
+- The app performs a three-stage fallback detection (symlink resolution + blob size check) to
+  mitigate the issue, but Developer Mode is the cleanest fix.
+
 ### Embedding model not downloading
 - Run `python manage.py cache_models`
 - Check internet access to Hugging Face
-- Check disk space (~500 MB required)
+- Check disk space (~1.5 GB required for `BAAI/bge-large-en-v1.5`)
 
 ### Ollama model not available
 - Run `ollama pull <model-name>`
@@ -201,3 +235,7 @@ Visit [http://localhost:8000](http://localhost:8000)
 ### git not found in Git Manager
 - Install git: `sudo apt install git` (Ubuntu/Debian) or `brew install git` (macOS)
 - Restart the Django server after installation
+
+### Language switcher not working (404)
+- The old Django i18n `/i18n/set_language/` URL has been removed.
+- Use the built-in **EN / JA** toggle buttons. The new URL is `/lang/en/` and `/lang/ja/`.
