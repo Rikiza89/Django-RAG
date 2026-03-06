@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+{% load i18n %}
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -214,6 +215,19 @@
                     {% endif %}
                 </div>
             </div>
+                <!-- Language Switcher -->
+                <form action="/i18n/set_language/" method="post" class="mt-2">
+                    {% csrf_token %}
+                    <input name="next" type="hidden" value="{{ request.path }}">
+                    <select name="language" class="form-select form-select-sm bg-dark text-light border-secondary"
+                            style="font-size:.75rem;" onchange="this.form.submit()" title="UI Language">
+                        {% get_current_language as LANGUAGE_CODE %}
+                        {% get_available_languages as LANGUAGES_LIST %}
+                        {% for lang_code, lang_name in LANGUAGES_LIST %}
+                        <option value="{{ lang_code }}"{% if lang_code == LANGUAGE_CODE %} selected{% endif %}>{{ lang_name }}</option>
+                        {% endfor %}
+                    </select>
+                </form>
         </div>
     </nav>
     {% endif %}

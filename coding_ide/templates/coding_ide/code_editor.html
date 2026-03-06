@@ -195,14 +195,14 @@
         document.getElementById('snippet-desc').value = el.dataset.desc;
 
         // Fetch content from server
-        fetch(`/ide/editor/${pk}/`, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        fetch(`/coding-ide/editor/${pk}/`, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
             .then(r => r.text())
             .then(html => {
                 // Extract content from JSON endpoint instead
             });
 
         // We use a dedicated JSON fetch for content
-        fetch(`/ide/api/snippet/${pk}/`, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        fetch(`/coding-ide/api/snippet/${pk}/`, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
             .then(r => r.json())
             .then(data => {
                 if (editor && data.content !== undefined) {
@@ -237,7 +237,7 @@
                 setStatus(`Saved: ${data.title}`);
                 setOutput(`✓ Snippet saved successfully (ID: ${data.pk})`);
                 // Reload page to update snippet list
-                setTimeout(() => location.href = `/ide/editor/${data.pk}/`, 800);
+                setTimeout(() => location.href = `/coding-ide/editor/${data.pk}/`, 800);
             } else {
                 setStatus('Save failed');
                 setOutput(`✗ Error: ${data.error}`);
@@ -249,13 +249,13 @@
     function deleteSnippet(event, pk) {
         event.stopPropagation();
         if (!confirm('Delete this snippet?')) return;
-        fetch(`/ide/editor/${pk}/delete/`, {
+        fetch(`/coding-ide/editor/${pk}/delete/`, {
             method: 'POST',
             headers: { 'X-CSRFToken': csrfToken },
         })
         .then(r => r.json())
         .then(data => {
-            if (data.success) location.href = '/ide/editor/';
+            if (data.success) location.href = '/coding-ide/editor/';
         });
     }
 

@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+{% load i18n %}
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -313,6 +314,22 @@
         </a>
     </div>
 
+
+    <!-- Language Switcher -->
+    <form action="/i18n/set_language/" method="post" style="padding: 6px 14px 2px;">
+        {% csrf_token %}
+        <input name="next" type="hidden" value="{{ request.path }}">
+        {% get_current_language as LANGUAGE_CODE %}
+        {% get_available_languages as LANGUAGES_LIST %}
+        <select name="language"
+                style="width:100%; background:#12121f; color:var(--ide-muted); border:1px solid var(--ide-border);
+                       border-radius:6px; padding:4px 8px; font-size:.75rem;"
+                onchange="this.form.submit()" title="UI Language">
+            {% for lang_code, lang_name in LANGUAGES_LIST %}
+            <option value="{{ lang_code }}"{% if lang_code == LANGUAGE_CODE %} selected{% endif %}>{{ lang_name }}</option>
+            {% endfor %}
+        </select>
+    </form>
     <div class="user-panel">
         <div style="color: var(--ide-muted); font-size: .7rem;">Signed in as</div>
         <div style="font-weight: 600;">{{ user.username }}</div>

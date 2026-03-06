@@ -8,6 +8,8 @@ from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
+from app_core.language_utils import get_lang_instruction
+
 
 class OllamaCoderClient:
     """
@@ -89,10 +91,12 @@ class OllamaCoderClient:
 
     def _build_code_prompt(self, query: str, context: list[str] = None, language: str = None) -> str:
         lang_hint = f" ({language})" if language else ""
+        lang_instruction = get_lang_instruction(query)
         system = (
             f"You are an expert software engineer and AI coding assistant{lang_hint}.\n"
             "Your task is to help developers write, understand, debug, and improve code.\n"
             "You have access to a code knowledge base retrieved below — use it as primary reference.\n\n"
+            f"Language rule: {lang_instruction}\n\n"
             "Rules:\n"
             "1. Always provide correct, runnable code when asked to write code.\n"
             "2. Use the retrieved code context to match existing style, patterns, and APIs.\n"

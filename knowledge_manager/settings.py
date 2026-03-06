@@ -52,6 +52,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.locale.LocaleMiddleware",  # must be after Session, before Common
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
@@ -94,10 +95,37 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
-LANGUAGE_CODE = "en-us"
+LANGUAGE_CODE = "en"
 TIME_ZONE = config('TIME_ZONE', default='UTC')
 USE_I18N = True
+USE_L10N = True
 USE_TZ = True
+
+# ---------------------------------------------------------------------------
+# Supported UI languages — used by LocaleMiddleware + language switcher.
+# The LLM auto-responds in the user's query language (language_utils.py).
+# ---------------------------------------------------------------------------
+from django.utils.translation import gettext_lazy as _
+
+LANGUAGES = [
+    ("en",      _('English')),
+    ("fr",      _('French')),
+    ("de",      _('German')),
+    ("es",      _('Spanish')),
+    ("pt",      _('Portuguese')),
+    ("it",      _('Italian')),
+    ("nl",      _('Dutch')),
+    ("pl",      _('Polish')),
+    ("ru",      _('Russian')),
+    ("ja",      _('Japanese')),
+    ("zh-hans", _('Chinese (Simplified)')),
+    ("ko",      _('Korean')),
+    ("ar",      _('Arabic')),
+    ("tr",      _('Turkish')),
+    ("hi",      _('Hindi')),
+]
+
+LOCALE_PATHS = [BASE_DIR / "locale"]
 
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
@@ -121,10 +149,10 @@ LOGOUT_REDIRECT_URL = 'login'
 # ---------------------------------------------------------------------------
 EMBEDDING_MODEL = config(
     'EMBEDDING_MODEL',
-    # Optimised for RTX 5050 / 32 GB RAM — 1024 dims, ~1.3 GB, best retrieval quality
-    default='BAAI/bge-large-en-v1.5'
-    # Lighter alternative: 'sentence-transformers/all-mpnet-base-v2'  (768 dims, ~420 MB)
-    # Multilingual:        'intfloat/multilingual-e5-large'           (1024 dims, ~1.1 GB)
+    # Multilingual — 100+ languages, 1024 dims, ~570 MB — best for multilingual RAG
+    default='BAAI/bge-m3'
+    # English-only alternative: 'BAAI/bge-large-en-v1.5'  (1024 dims, ~1.3 GB)
+    # Lightweight:              'sentence-transformers/all-mpnet-base-v2' (768 dims, ~420 MB)
 )
 EMBEDDING_DEVICE = 'cpu'           # Always CPU — do NOT change
 EMBEDDING_BATCH_SIZE = config('EMBEDDING_BATCH_SIZE', default=64, cast=int)  # 32 GB RAM / Ryzen 7
