@@ -232,7 +232,7 @@
     function removeRepo(event, pk) {
         event.stopPropagation();
         if (!confirm('Remove this repository from the list? (Does not delete files.)')) return;
-        fetch(`/ide/git/${pk}/remove/`, {
+        fetch(`/coding-ide/git/${pk}/remove/`, {
             method: 'POST',
             headers: { 'X-CSRFToken': csrfToken },
         }).then(r => r.json()).then(d => { if (d.success) location.reload(); });
@@ -240,7 +240,7 @@
 
     function gitAction(action, payload = {}) {
         if (!activeRepoPk) { setOutput('No repository selected.'); return; }
-        const url = `/ide/api/git/${activeRepoPk}/${action}/`;
+        const url = `/coding-ide/api/git/${activeRepoPk}/${action}/`;
         const isGet = action === 'status';
 
         setOutput('Running…');
