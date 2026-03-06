@@ -38,4 +38,5 @@ urlpatterns = [
     # API Endpoints
     path('api/check-ollama/', views.api_check_ollama, name='api_check_ollama'),
     path('api/embedding-status/', views.api_embedding_status, name='api_embedding_status'),
+    path('api/model-download-status/', views.api_model_download_status, name='api_model_download_status'),
 ]

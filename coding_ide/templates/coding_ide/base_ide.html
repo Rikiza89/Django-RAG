@@ -275,9 +275,23 @@
             </a>
         </li>
         <li class="nav-item">
+            <a class="nav-link {% if 'code_editor' in request.resolver_match.url_name %}active{% endif %}"
+               href="{% url 'coding_ide:code_editor' %}">
+                <i class="bi bi-file-code"></i> Code Editor
+            </a>
+        </li>
+        <li class="nav-item">
             <a class="nav-link {% if request.resolver_match.url_name == 'query_history' %}active{% endif %}"
                href="{% url 'coding_ide:query_history' %}">
                 <i class="bi bi-clock-history"></i> History
+            </a>
+        </li>
+
+        <li><div class="nav-section">Tools</div></li>
+        <li class="nav-item">
+            <a class="nav-link {% if request.resolver_match.url_name == 'git_manager' %}active{% endif %}"
+               href="{% url 'coding_ide:git_manager' %}">
+                <i class="bi bi-git"></i> Git Manager
             </a>
         </li>
 

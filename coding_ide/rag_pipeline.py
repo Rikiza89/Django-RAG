@@ -222,7 +222,7 @@ class CodeRAGPipeline:
 
     def get_system_status(self) -> dict:
         return {
-            'embedding_model': self.embeddings.status(),
+            'embedding_model': self.embeddings.check_cache_status(),
             'faiss_index': self.faiss.get_stats(),
             'llm': {
                 'connected': self.llm.check_connection(),

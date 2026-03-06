@@ -152,6 +152,55 @@ class CodeChunk(models.Model):
         return f"{self.code_file.title} — Chunk {self.chunk_index}"
 
 
+class CodeSnippet(models.Model):
+    """
+    A code snippet written directly in the in-browser Monaco editor.
+    """
+    title = models.CharField(max_length=255, help_text="Snippet name")
+    language = models.CharField(
+        max_length=20,
+        choices=CodeLanguage.choices,
+        default=CodeLanguage.PYTHON,
+    )
+    content = models.TextField(blank=True, help_text="Source code content")
+    description = models.TextField(blank=True)
+
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='code_snippets')
+    created_at = models.DateTimeField(auto_now_add=True)
+    modified_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-modified_at']
+        indexes = [
+            models.Index(fields=['created_by', '-modified_at']),
+        ]
+
+    def __str__(self):
+        return f"{self.title} ({self.get_language_display()})"
+
+
+class GitRepository(models.Model):
+    """
+    Tracks a Git repository path for the in-IDE git manager.
+    """
+    name = models.CharField(max_length=255, help_text="Display name for this repo")
+    path = models.CharField(max_length=1024, unique=True, help_text="Absolute path on the server")
+    current_branch = models.CharField(max_length=255, blank=True, default='main')
+    is_initialized = models.BooleanField(default=False)
+    remote_url = models.CharField(max_length=1024, blank=True, help_text="git remote origin URL")
+
+    added_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='git_repos')
+    added_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['name']
+        verbose_name = 'Git Repository'
+        verbose_name_plural = 'Git Repositories'
+
+    def __str__(self):
+        return f"{self.name} ({self.path})"
+
+
 class CodeQueryLog(models.Model):
     """
     Records coding queries for history and analytics.

@@ -1,503 +1,132 @@
-# 📚 Knowledge Management System with RAG
+# Django-RAG — Knowledge Hub + Coding IDE
 
-A fully local, offline-capable Django application implementing Retrieval-Augmented Generation (RAG) for internal company document management and querying using Ollama (Llama 3.2 1B).
+A production-ready Django 5.x application combining:
 
-## 🎯 Features
+- **Knowledge Hub** (`app_core`) — RAG over uploaded documents (PDF, Word, Excel, TXT) using FAISS + Ollama
+- **Coding IDE** (`coding_ide`) — In-browser coding assistant powered by Qwen 2.5 Coder + RAG over code files, Monaco editor, and Git manager
 
-- **100% Offline Operation** - Works without internet after initial setup
-- **Multi-format Document Support** - PDF, DOCX, TXT, XLSX
-- **RAG-Powered Q&A** - Ask questions, get answers from your documents
-- **Access Control** - Multi-tier document authorization (Public, Department, Manager, Private)
-- **Low Resource Requirements** - Optimized for ≤8GB RAM, CPU-only
-- **Local LLM** - Uses Ollama with Llama 3.2 1B model
-- **Cached Embeddings** - Download embedding model once, use offline forever
-- **FAISS Vector Search** - Fast similarity search for relevant chunks
+---
 
-## 📋 Prerequisites
+## Features
 
-### System Requirements
-- **RAM:** 8 GB minimum
-- **CPU:** Any modern CPU (no GPU required)
-- **Storage:** ~5 GB for models and data
-- **OS:** Linux, macOS, or Windows
+### Knowledge Hub (`app_core`)
+- Upload and index documents (PDF, DOCX, XLSX, TXT)
+- Semantic search via FAISS (CPU)
+- LLM answers via Ollama (`llama3.2:3b` or similar)
+- Query history and cache management
 
-### Software Requirements
-- Python 3.11+
-- Ollama (for local LLM inference)
+### Coding IDE (`coding_ide`)
+- **Code Assistant** — Ask questions about code using RAG over uploaded source files
+- **In-browser Monaco Editor** — Write code directly in the browser (VS Code experience)
+  - Syntax highlighting for 20+ languages
+  - Save snippets, load them back, send to AI assistant
+  - Ctrl+S to save
+- **Git Manager** — Manage local git repos from the UI
+  - Init, Status, Add, Commit, Branch, Checkout, Push, Pull
+  - Add any local path as a repository
+- **Knowledge Base** — Upload code files (`.py`, `.js`, `.ts`, `.go`, `.rs`, etc.) for RAG indexing
+- **Query History** — Browse past code queries
 
-## 🚀 Installation
+### Shared Infrastructure
+- **Single embedding model** (`sentence-transformers/all-mpnet-base-v2`) — downloaded once, shared by both apps
+- **CPU embeddings** — always runs on CPU (no CUDA kernel issues)
+- **GPU for Ollama only** — Ollama uses its own CUDA runtime
+- **FAISS CPU** — `faiss-cpu` (faiss-gpu-cu12 has no Python 3.12+ wheels)
+- Download progress visible in System Status
 
-### Step 1: Install Ollama
+---
 
-**Linux/macOS:**
-```bash
-curl -fsSL https://ollama.ai/install.sh | sh
+## Architecture
+
+```
+Django-RAG/
+├── knowledge_manager/     # Django project settings + root URLs
+├── app_core/              # Document RAG app
+│   ├── cache_manager.py   # Shared singleton embedding model
+│   ├── faiss_manager.py   # CPU-only FAISS index
+│   ├── rag_pipeline.py    # Document RAG pipeline
+│   └── management/commands/cache_models.py
+├── coding_ide/            # Coding IDE app
+│   ├── cache_manager.py   # Re-exports app_core singleton
+│   ├── faiss_code_manager.py  # CPU-only code FAISS index
+│   ├── rag_pipeline.py    # Code RAG pipeline
+│   ├── ollama_coder_client.py # Qwen 2.5 Coder client
+│   └── templates/
+│       ├── code_editor.html   # Monaco Editor
+│       └── git_manager.html   # Git UI
+└── requirements.txt
 ```
 
-**Windows:**
-Download from [https://ollama.ai/download](https://ollama.ai/download)
+---
 
-### Step 2: Pull Llama 3.2 3B Model
+## Quick Start
 
-```bash
-ollama pull llama3.2:3b
-```
-
-Verify the model is available:
-```bash
-ollama list
-```
-
-### Step 3: Clone and Setup Project
+See [SETUP_GUIDE.md](SETUP_GUIDE.md) for detailed instructions.
 
 ```bash
-# Clone the repository
-git clone <your-repo-url>
-cd knowledge_manager
-
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install dependencies
+# 1. Clone and install
+git clone <repo-url>
+cd Django-RAG
 pip install -r requirements.txt
-```
 
-### Step 4: Configure Environment
+# 2. Install PyTorch with CUDA (for GPU reporting — embeddings still use CPU)
+pip install torch --index-url https://download.pytorch.org/whl/cu124
 
-```bash
-# Copy example environment file
-cp .env.example .env
+# 3. Configure environment
+cp change.env.txt .env
+# Edit .env with your settings
 
-# Edit .env with your settings (optional - defaults work)
-nano .env
-```
-
-Key settings:
-- `SECRET_KEY`: Change for production
-- `OLLAMA_HOST`: Default is `http://localhost:11434`
-- `EMBEDDING_MODEL`: Default is `sentence-transformers/all-MiniLM-L6-v2`
-
-### Step 5: Download Embedding Model (One-time, requires internet)
-
-```bash
-python manage.py shell
-```
-
-In the Python shell:
-```python
-from app_core.cache_manager import embedding_cache
-embedding_cache.get_model()  # Downloads and caches the model
-exit()
-```
-
-This downloads the embedding model to `./models_cache/`. After this, the system works fully offline.
-
-### Step 6: Initialize Database
-
-```bash
-# Run migrations
-python manage.py makemigrations
+# 4. Database setup
 python manage.py migrate
 
-# Create superuser
+# 5. Download embedding model
+python manage.py cache_models
+
+# 6. Create admin user
 python manage.py createsuperuser
 
-# If you want to try it with demo users use this command:
-python manage.py setup_system --create-demo-users
+# 7. Pull Ollama models
+ollama pull llama3.2:3b
+ollama pull qwen2.5-coder:7b-instruct-q4_K_M
 
-# And use the demo users created by setup:
-
-# Admin: admin / admin123
-# Manager: manager / manager123
-# Employee: employee / employee123
-```
-
-### Step 7: Run the Application
-
-```bash
-# Start Ollama (if not running)
-ollama serve
-
-# In another terminal, start Django
+# 8. Run
 python manage.py runserver
 ```
 
-Visit: `http://localhost:8000`
-
-## 📁 Project Structure
-
-```
-knowledge_manager/                          # Project root directory
-│
-├── manage.py                               # Django management script
-├── requirements.txt                        # Python dependencies
-├── .env.example                           # Environment configuration template
-├── .env                                   # Actual environment config 
-├── README.md                              # Main documentation
-├── SETUP_GUIDE.md                         # Quick setup instructions
-├── PROJECT_STRUCTURE.txt                  # This file
-│
-├── knowledge_manager/                     # Django project settings
-│   ├── __init__.py
-│   ├── settings.py                       # Main settings 
-│   ├── urls.py                           # Project URL routing 
-│   ├── wsgi.py                           # WSGI entry point
-│   └── asgi.py                           # ASGI entry point
-│
-├── app_core/                              # Main application
-│   ├── __init__.py
-│   ├── models.py                         # Database models
-│   ├── views.py                          # View functions
-│   ├── urls.py                           # App URL routing
-│   ├── forms.py                          # Django forms
-│   ├── admin.py                          # Admin configuration
-│   ├── apps.py                           # App configuration
-│   │
-│   ├── cache_manager.py                  # Embedding model caching
-│   ├── document_processor.py             # Text extraction
-│   ├── faiss_manager.py                  # Vector store management
-│   ├── ollama_client.py                  # LLM client
-│   ├── rag_pipeline.py                   # RAG orchestration
-│   │
-│   ├── management/                       # Custom management commands for setup
-│   │   ├── __init__.py
-│   │   └── commands/
-│   │       ├── __init__.py
-│   │       └── setup_system.py          # Setup command
-│   │
-│   ├── migrations/                       # Database migrations
-│   │   ├── __init__.py
-│   │   └── 0001_initial.py              
-│   │
-│   ├── templates/                        # HTML templates
-│   │   └── app_core/
-│   │       ├── base.html                # Base template
-│   │       ├── login.html               # Login page
-│   │       ├── dashboard.html           # Dashboard
-│   │       ├── chat.html                # Query interface
-│   │       ├── documents.html           # Document list
-│   │       ├── upload.html              # Upload form
-│   │       ├── document_detail.html     # Document view
-│   │       ├── system_status.html       # System status
-│   │       ├── profile.html             # User profile
-│   │       ├── query_history.html       # Query history
-│   │       ├── user_list.html           # User management
-│   │       ├── user_create.html         # Create user
-│   │       ├── document_confirm_delete.html  # Delete confirmation
-│   │       └── document_confirm_reindex.html # Reindex confirmation
-│   │
-│   ├── static/                           # Static files (CSS, JS, images)
-│   │   ├── css/
-│   │   │   └── custom.css               # Custom styles (optional)
-│   │   ├── js/
-│   │   │   └── custom.js                # Custom JavaScript (optional)
-│   │   └── images/
-│   │       └── logo.png                 # Logo (optional)
-│   │
-│   └── tests/                            # Unit tests
-│       ├── __init__.py
-│       ├── test_models.py               # Model tests (optional)
-│       ├── test_views.py                # View tests (optional)
-│       └── test_rag_pipeline.py         # RAG tests (optional)
-│
-├── media/                                 # User uploaded files
-│   └── documents/                        # Organized by date
-│       └── 2024/
-│           └── 11/
-│               └── 03/
-│                   └── sample.pdf
-│
-├── models_cache/                         # Cached embedding models
-│   └── sentence-transformers_all-MiniLM-L6-v2/
-│       ├── config.json
-│       ├── pytorch_model.bin
-│       └── ...
-│
-├── faiss_index/                          # FAISS vector store
-│   ├── index.faiss                      # Vector index
-│   └── metadata.pkl                     # Chunk metadata
-│
-├── staticfiles/                          # Collected static files (production)
-│   └── ...
-│
-├── db.sqlite3                            # SQLite database
-├── knowledge_manager.log                 # Application logs
-│
-└── venv/                                 # Virtual environment
-    ├── bin/                              # (Linux/macOS)
-    ├── Scripts/                          # (Windows)
-    ├── lib/
-    └── ...
-```
-
-## 🔧 Usage
-
-### 1. User Management
-
-**Create Users:**
-- Admin users can create new users via Django admin: `http://localhost:8000/admin`
-- Or programmatically:
-
-```bash
-python manage.py shell
-```
-
-```python
-from django.contrib.auth.models import User
-from app_core.models import UserProfile, UserRole
-
-# Create user
-user = User.objects.create_user('employee1', 'email@example.com', 'password123')
-
-# Create profile with role
-profile = UserProfile.objects.create(
-    user=user,
-    role=UserRole.EMPLOYEE,
-    department='Engineering'
-)
-```
-
-**User Roles:**
-- **Admin**: Full access, manage users and documents
-- **Manager**: Upload documents, access department documents
-- **Employee**: Read-only access to authorized documents
-
-### 2. Upload Documents
-
-1. Login as Manager or Admin
-2. Navigate to "Upload Document"
-3. Select file (PDF, DOCX, TXT, XLSX)
-4. Set title and access level
-5. For department-level docs, specify department
-6. Click "Upload"
-
-The system will:
-- Extract text from the document
-- Split into chunks
-- Generate embeddings (cached model, CPU-only)
-- Store in FAISS index
-- Ready for querying!
-
-### 3. Query Documents
-
-1. Navigate to "Chat" or "Query"
-2. Type your question
-3. Click "Ask"
-
-The system will:
-- Embed your query
-- Search FAISS for relevant chunks (respecting access control)
-- Send context + query to Ollama
-- Display answer with source documents
-
-### 4. System Dashboard
-
-Access at `/dashboard/` to view:
-- Total documents and processing status
-- FAISS index statistics
-- Embedding model cache status
-- Ollama connection status
-- Recent queries
-
-## 🔒 Access Control
-
-Documents have four access levels:
-
-1. **Public**: All authenticated users
-2. **Department**: Users in the same department
-3. **Manager**: Only managers and admins
-4. **Private**: Only admins
-
-Access control is enforced in:
-- Document listing
-- FAISS retrieval (filters results)
-- Direct document access
-
-## ⚙️ Configuration
-
-### Memory Optimization
-
-In `.env`:
-```bash
-# Reduce batch size for lower RAM usage
-EMBEDDING_BATCH_SIZE=8
-
-# Smaller chunks reduce memory
-CHUNK_SIZE=400
-CHUNK_OVERLAP=40
-
-# Limit concurrent operations
-MAX_CONCURRENT_EMBEDDINGS=1
-```
-
-### Query Performance
-
-```bash
-# Number of chunks to retrieve
-FAISS_TOP_K=5
-
-# Enable caching for repeated queries
-ENABLE_QUERY_CACHE=True
-QUERY_CACHE_SIZE=50
-```
-
-### Ollama Settings
-
-```bash
-# Timeout for LLM inference (seconds)
-OLLAMA_TIMEOUT=3600
-
-# Change model (must be pulled first)
-OLLAMA_MODEL=llama3.2:1b
-```
-
-## 🛠️ Troubleshooting
-
-### Issue: Ollama connection failed
-
-**Solution:**
-```bash
-# Start Ollama server
-ollama serve
-
-# Check if model is available
-ollama list
-
-# Test generation
-ollama run llama3.2:1b "Hello"
-```
-
-### Issue: Out of memory
-
-**Solution:**
-1. Reduce `EMBEDDING_BATCH_SIZE` to 4 or 8
-2. Reduce `CHUNK_SIZE` to 300-400
-3. Set `MAX_CONCURRENT_EMBEDDINGS=1`
-4. Process documents one at a time
-
-### Issue: Embedding model download fails
-
-**Solution:**
-1. Check internet connection
-2. Manually download model:
-```python
-from sentence_transformers import SentenceTransformer
-model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2', cache_folder='./models_cache')
-```
-
-### Issue: Slow query responses
-
-**Solution:**
-1. Ensure Ollama is running locally (not in Docker)
-2. Reduce `FAISS_TOP_K` to 3
-3. Use smaller model if 3B is too slow
-4. Enable query caching
-
-## 📊 Performance
-
-### Typical Performance (8GB RAM, i5 CPU):
-- **Document Processing**: 5-15 seconds per document
-- **Embedding Generation**: ~50 chunks/second
-- **FAISS Retrieval**: <100ms for 10,000 chunks
-- **LLM Inference**: 2-5 seconds for 500 tokens
-
-### Memory Usage:
-- **Base Django**: ~100 MB
-- **Embedding Model**: ~100 MB
-- **FAISS Index**: ~10 MB per 10,000 chunks
-- **Ollama**: ~2-3 GB for Llama 3.2 3B
-
-## 🔄 Maintenance
-
-### Reindex All Documents
-
-```bash
-python manage.py shell
-```
-
-```python
-from app_core.models import Document
-from app_core.rag_pipeline import rag_pipeline
-
-for doc in Document.objects.all():
-    print(f"Reindexing {doc.title}...")
-    rag_pipeline.reindex_document(doc)
-```
-
-### Clear Query Cache
-
-```bash
-python manage.py shell
-```
-
-```python
-from app_core.rag_pipeline import rag_pipeline
-rag_pipeline.clear_cache()
-```
-
-### Backup
-
-```bash
-# Backup database
-cp db.sqlite3 db.sqlite3.backup
-
-# Backup FAISS index
-cp -r faiss_index faiss_index.backup
-
-# Backup uploaded documents
-cp -r media media.backup
-```
-
-## 🚦 Production Deployment
-
-### Security
-
-1. Change `SECRET_KEY` in `.env`
-2. Set `DEBUG=False`
-3. Configure `ALLOWED_HOSTS`
-4. Use PostgreSQL instead of SQLite
-5. Serve static files with nginx/Apache
-6. Use HTTPS
-7. Implement rate limiting
-
-### Database Migration to PostgreSQL
-
-In `.env`:
-```bash
-DATABASE_URL=postgresql://user:password@localhost:5432/knowledge_db
-```
-
-Install psycopg2:
-```bash
-pip install psycopg2-binary
-```
-
-## 📝 License
-
-GNU Affero General Public License v3.0
-
-## 🤝 Contributing
-
-Contributions welcome! Please follow these guidelines:
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests
-5. Submit a pull request
-
-## 📧 Support
-
-For issues and questions:
-- GitHub Issues: Send me issues
-- Documentation: Look up into repos files, there are a lot!
-
-## 🙏 Acknowledgments
-
-- [Ollama](https://ollama.ai/) - Local LLM inference
-- [Sentence Transformers](https://www.sbert.net/) - Embedding models
-- [FAISS](https://github.com/facebookresearch/faiss) - Vector similarity search
-- [Django](https://www.djangoproject.com/) - Web framework
-
-
-
+---
+
+## GPU Notes (RTX 5050 / CUDA 12.8)
+
+- **Ollama** automatically uses GPU for LLM inference (manages its own CUDA runtime)
+- **Embeddings** always run on CPU (`EMBEDDING_DEVICE = 'cpu'`) — no CUDA errors
+- **FAISS** uses CPU-only (`faiss-cpu`) — `faiss-gpu-cu12` has no Python 3.12+ wheels
+- Install CUDA-enabled PyTorch from `https://download.pytorch.org/whl/cu124` for accurate GPU detection in System Status
+
+---
+
+## URL Routes
+
+| Path | App | Description |
+|------|-----|-------------|
+| `/` | app_core | Document dashboard |
+| `/documents/` | app_core | Document list |
+| `/chat/` | app_core | Document Q&A |
+| `/ide/` | coding_ide | Coding IDE dashboard |
+| `/ide/chat/` | coding_ide | Code assistant |
+| `/ide/editor/` | coding_ide | Monaco code editor |
+| `/ide/git/` | coding_ide | Git manager |
+| `/ide/knowledge-base/` | coding_ide | Code file knowledge base |
+| `/ide/status/` | coding_ide | System status |
+
+---
+
+## Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `SECRET_KEY` | required | Django secret key |
+| `DEBUG` | `False` | Debug mode |
+| `OLLAMA_HOST` | `http://localhost:11434` | Ollama API host |
+| `OLLAMA_MODEL` | `llama3.2:3b` | Document LLM model |
+| `CODING_OLLAMA_MODEL` | `qwen2.5-coder:7b-instruct-q4_K_M` | Coding LLM model |
+| `EMBEDDING_MODEL` | `sentence-transformers/all-mpnet-base-v2` | Shared embedding model |
